@@ -43,14 +43,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_file(os.path.join(script_path, "audioPlayer.js"))
         # If the url ends with a "/", treat it as a playlist request for that location 
         elif name.endswith("/"):
-            self.send_response(200)
-            self.end_headers()
-            # Requesting a playlist
-            #   playlist/Queen/A Day At The Races
-
-            # Read the playlist page template html from file
-            with open("playlist.html") as html_file:
-                html = html_file.read()
+            # Requesting a directory, which we treat as requesting a playlist for that location
+            #   Queen/A Day At The Races/
 
             # Get the requested path and navigate to it 
             requested_path = name.rstrip("/")
@@ -71,6 +65,14 @@ class Handler(BaseHTTPRequestHandler):
                     base_dict = dirs[part]
                     dirs = base_dict["dirs"]
 
+            # Requested path is known to be available now, so send response
+            self.send_response(200)
+            self.end_headers()
+
+            # Read the playlist page template html from file
+            with open("playlist.html") as html_file:
+                html = html_file.read()
+
             # Construct the page. This will be all the directories directly under this one, as links,
             # and all the files from this directory onwards, as a playlist.
 
@@ -83,7 +85,7 @@ class Handler(BaseHTTPRequestHandler):
                 dir_names = [ dir_name for dir_name in dirs.keys() ]
                 dir_names.sort(key=str.casefold)
                 for dir_name in dir_names:
-                    link = requested_path + "/" + dir_name + "/"
+                    link = dir_name + "/"
                     playlist_link = """<p><a href="__LINK__">__NAME__</a></p>""".replace("__LINK__", link).replace("__NAME__", dir_name)
                     playlist_links = playlist_links + playlist_link
 
@@ -177,11 +179,11 @@ def get_media(dir_dict, path: str = ""):
 
     result = []
     # Get all media files in this directory
-    for media_name in media.keys():
-        media_filepath = media[media_name]
+    for media_display_name in media.keys():
+        media_filepath = media[media_display_name]
         extension = os.path.splitext(media_filepath)[1]
-        full_media_name = path.replace("/", ": ") + media_name
-        constructed_filepath = path + media_name + extension 
+        full_media_name = path.replace("/", ": ") + media_display_name
+        constructed_filepath = path + media_display_name + extension 
         result.append( (full_media_name, constructed_filepath, media_filepath) )
     # Recurse into all sub-dirs, appending the directory name to the path
     for sub_dir in dirs.keys():
