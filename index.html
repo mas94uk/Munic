@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<!-- Audioplayer with playlist - based on github.com:NelsWebDev/BetterAudioPlaylist.git -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>HTML5 Audio Playlist</title>
+    <style>
+        #playlist{
+            list-style: none;
+        }
+        #playlist li a{
+            color:black;
+            text-decoration: none;
+        }
+        #playlist .current-song a{
+            color:blue;
+        }
+    </style>
+</head>
+<body>
+    __PLAYLIST_LINKS__
+
+    <audio src="" controls id="audioPlayer" >
+        Sorry, your browser doesn't support html5!
+    </audio>
+    <ul id="playlist">
+        __PLAYLIST_ITEMS__
+    </ul>
+    <a href="#" onclick="playlist.prevTrack();">Prev Track</a>
+    <a href="#" onclick="playlist.nextTrack();">Next Track</a>
+    <a href="#" onclick="playlist.toggleShuffle();">Toggle Shuffle</a>
+    <script src="https://code.jquery.com/jquery-2.2.0.js"></script>
+    <script src="/audioPlayer.js"></script>
+    <script>
+        
+        /*
+    Default constructor configuration:
+        autoplay: false,
+        shuffle: false,
+        loop: false,
+        playerId: "audioPlayer",
+        playlistId: "playlist",
+        currentClass: "current-song"
+        
+        
+*/
+        
+        // loads the audio player
+        var config = {
+          autoplay: true, 
+            loop: true,
+            shuffle: true
+        };
+        var playlist = new AudioPlaylist();
+        
+    </script>
+</body>
+</html>
