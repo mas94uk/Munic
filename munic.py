@@ -97,13 +97,10 @@ class Handler(BaseHTTPRequestHandler):
             # Get all media files at or below this location
             media_items = get_media(base_dict)
 
-            # TODO: Don't put full path of media file in link - it exposes too much internal detail about the system.
-            # TODO: We already use our "constructed" path for playlists - do the same for songs.
-            # TODO: We will have to parse the given name and walk the library struct to get the filename.
-
-            for (song_name, song_filename) in media_items:
-                # Prefix song_filename with "/media/" so that we can detect it above
-                playlist_item = """<li><a href="__SONG_FILENAME__">__SONG_NAME__</a></li>\n""".replace("__SONG_FILENAME__", song_filename).replace("__SONG_NAME__", song_name)
+            # Construct the list items
+            for (song_display_name, song_constructed_filepath, song_filepath) in media_items:
+                print("{} -- {} -- {}".format(song_display_name, song_constructed_filepath, song_filepath))
+                playlist_item = """<li><a href="__SONG_FILENAME__">__SONG_NAME__</a></li>\n""".replace("__SONG_FILENAME__", song_constructed_filepath).replace("__SONG_NAME__", song_display_name)
                 playlist_items = playlist_items + playlist_item
 
             # Drop the playlist content into the html template
@@ -113,20 +110,36 @@ class Handler(BaseHTTPRequestHandler):
 
         # Otherwise, assume the request is for a media file 
         else:
-            # Ensure the song is in the library, to prevent someone from getting arbitrary paths -> security hazard
-            all_media = get_media(library)
-            song_filenames = [ media[1] for media in all_media ]
+            print("Attempting to get file {}".format(name))
 
-            requested_filename = name
-            if requested_filename in song_filenames:
-                print("Sending file")
-                self.send_response(200)
-                self.end_headers()
-                self.send_file(requested_filename)
-            else:
-                print("Requested unknown file: {}".format(requested_filename))
+            # Get the real media filename from the library by walking down the structure to the right directory
+            parts = name.lstrip("/").split("/")
+            base_dict = library
+            for dir_part in parts[:-1]:
+                dirs = base_dict["dirs"]
+                if dir_part not in dirs.keys():
+                    print("Requested unknown file: {} - failed at {}".format(name, dir_part))
+                    self.send_response(404)
+                    self.end_headers()
+                    return
+                base_dict = dirs[dir_part]
+
+            # Remove the extension from the constructed filename to give the display name
+            constructed_filename = parts[-1]
+            basename = os.path.splitext(constructed_filename)[0]
+
+            # Find the song in the dictionary (display name is key) and get its real filepath (the value)
+            media = base_dict["media"]
+            if basename not in media.keys():
+                print("File {} not found in directory".format(basename))
                 self.send_response(404)
                 self.end_headers()
+                return
+            filepath = media[basename]
+            print("Sending file {}".format(filepath))
+            self.send_response(200)
+            self.end_headers()
+            self.send_file(filepath)
 
     def send_html(self, htmlstr):
         "Simply returns htmlstr with the appropriate content-type/status."
@@ -156,19 +169,25 @@ def run():
     server.serve_forever()
 
 """ Get a complete, flat list of all media in the library.
-Returns an alphabetical list of tuples of (song name, media filename).
-Song names are prefixed with subdir names if they are in sub-directories."""
-def get_media(dir_dict, prefix: str = ""):
+Returns an alphabetical list of tuples of (song display name, constructed filepath, media real filepath).
+"Constructed filepath" is the apparent filepath relative to the given dir-dict, e.g. "Queen/A Day At The Races/Drowse.mp3".
+(This includes the extension (e.g. .mp3) in case the browser requires it to play the file.)
+Song display names are prefixed with subdir names if they are in sub-directories."""
+def get_media(dir_dict, path: str = ""):
     media = dir_dict["media"]
     dirs = dir_dict["dirs"]
 
     result = []
+    # Get all media files in this directory
     for media_name in media.keys():
-        full_media_name = prefix + media_name
-        media_filename = media[media_name]
-        result.append( (full_media_name, media_filename) )
+        media_filepath = media[media_name]
+        extension = os.path.splitext(media_filepath)[1]
+        full_media_name = path.replace("/", ": ") + media_name
+        constructed_filepath = path + media_name + extension 
+        result.append( (full_media_name, constructed_filepath, media_filepath) )
+    # Recurse into all sub-dirs, appending the directory name to the path
     for sub_dir in dirs.keys():
-        result = result + get_media(dirs[sub_dir], prefix + sub_dir+": ")
+        result = result + get_media(dirs[sub_dir], path + sub_dir + "/")
 
     # Sort alphabetially
     result.sort(key=lambda tup: tup[0].casefold())
@@ -178,8 +197,8 @@ def get_media(dir_dict, prefix: str = ""):
 def load_library(media_dirs):
     # Walk the given path, creating a data structure as follows:
     # A recursive structure of a dict representing the top level, containing:
-    #  - "media" (dict of filename strings)
-    #  - "dirs" (dict of dicts like the top level)
+    #  - "media" (dict of songname:filename)
+    #  - "dirs" (dict of dirname:directory-dict like the top level)
     #  - "graphic" (graphic filename, if present)
     # The filenames will be the full filepath of the file.
     # Because we want to be able to overlay multiple directories, we cannot simply walk and create the structure as we find it.
