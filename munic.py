@@ -25,46 +25,35 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         print("path: {}\n".format(self.path))
         name = self.path
-        name = name.strip("/")
+        # name = name.lstrip("/")
         name = urllibparse.unquote(name)
         print("name: {}\n".format(name))
 
-        # If path is a filepath of a file we know about...
-        if name.startswith("media/"):
-            # Ensure the song is in the library, to prevent someone from getting arbitrary paths -> security hazard
-            all_media = get_media(library)
-            song_filenames = [ media[1] for media in all_media ]
-
-            requested_filename = name[len("media/"):]
-            if requested_filename in song_filenames:
-                self.send_response(200)
-                self.end_headers()
-                self.send_file(requested_filename)
-            else:
-                print("Requested unknown file: {}".format(requested_filename))
-                self.send_response(404)
-                self.end_headers()
-        elif name == "audioPlayer.js":
-            self.send_response(200)
-            self.end_headers()
-            self.send_file(os.path.join(script_path, "audioPlayer.js"))
-        elif name == "":
+        # Front page
+        if name == "":
             # TODO special case for front page
             self.send_response(200)
             self.end_headers()
             self.wfile.write("Coming soon".encode("utf-8"))
-        elif name.startswith("playlist"):
+        # If path is a static file...
+        # Bit hacky but ignoring the path means we do not have to worry about relative paths
+        elif name.endswith("audioPlayer.js"):
+            self.send_response(200)
+            self.end_headers()
+            self.send_file(os.path.join(script_path, "audioPlayer.js"))
+        # If the url ends with a "/", treat it as a playlist request for that location 
+        elif name.endswith("/"):
             self.send_response(200)
             self.end_headers()
             # Requesting a playlist
             #   playlist/Queen/A Day At The Races
 
             # Read the playlist page template html from file
-            with open("index.html") as html_file:
+            with open("playlist.html") as html_file:
                 html = html_file.read()
 
             # Get the requested path and navigate to it 
-            requested_path = name[len("playlist"):].strip("/")
+            requested_path = name.rstrip("/")
             print("Requested path: {}".format(requested_path))
             parts = requested_path.split("/")
             base_dict = library
@@ -88,14 +77,14 @@ class Handler(BaseHTTPRequestHandler):
 
             # TODO: Header - perhaps the requested path with /s replaced with <p/> and progressively smaller fonts?
 
-            # Build the links section
+            # Build the song links section
             playlist_links = ""
             if dirs:
                 # Sort the keys (dir names) alphabetically
                 dir_names = [ dir_name for dir_name in dirs.keys() ]
                 dir_names.sort(key=str.casefold)
                 for dir_name in dir_names:
-                    link = "/playlist/" + requested_path + "/" + dir_name
+                    link = requested_path + "/" + dir_name + "/"
                     playlist_link = """<p><a href="__LINK__">__NAME__</a></p>""".replace("__LINK__", link).replace("__NAME__", dir_name)
                     playlist_links = playlist_links + playlist_link
 
@@ -108,21 +97,36 @@ class Handler(BaseHTTPRequestHandler):
             # Get all media files at or below this location
             media_items = get_media(base_dict)
 
+            # TODO: Don't put full path of media file in link - it exposes too much internal detail about the system.
+            # TODO: We already use our "constructed" path for playlists - do the same for songs.
+            # TODO: We will have to parse the given name and walk the library struct to get the filename.
+
             for (song_name, song_filename) in media_items:
                 # Prefix song_filename with "/media/" so that we can detect it above
-                song_filename = "/media/" + song_filename
                 playlist_item = """<li><a href="__SONG_FILENAME__">__SONG_NAME__</a></li>\n""".replace("__SONG_FILENAME__", song_filename).replace("__SONG_NAME__", song_name)
                 playlist_items = playlist_items + playlist_item
 
             # Drop the playlist content into the html template
             html = html.replace("__PLAYLIST_ITEMS__", playlist_items)
 
-
             self.wfile.write(html.encode("utf-8"))
+
+        # Otherwise, assume the request is for a media file 
         else:
-            # Not expeted: do nothing
-            print("File {} not supported - returning nothing".format(name))
-            pass
+            # Ensure the song is in the library, to prevent someone from getting arbitrary paths -> security hazard
+            all_media = get_media(library)
+            song_filenames = [ media[1] for media in all_media ]
+
+            requested_filename = name
+            if requested_filename in song_filenames:
+                print("Sending file")
+                self.send_response(200)
+                self.end_headers()
+                self.send_file(requested_filename)
+            else:
+                print("Requested unknown file: {}".format(requested_filename))
+                self.send_response(404)
+                self.end_headers()
 
     def send_html(self, htmlstr):
         "Simply returns htmlstr with the appropriate content-type/status."
