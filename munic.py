@@ -64,11 +64,10 @@ class Handler(BaseHTTPRequestHandler):
                     print("Part {}".format(part))
                     # If that directory does not exist
                     if part not in dirs.keys():
-                        print("not found")
+                        print("Failed to find {} - failed at {}".format(requested_path, part))
                         self.send_response(404)
                         self.end_headers
                         return
-                    print("found")
                     base_dict = dirs[part]
                     dirs = base_dict["dirs"]
 
@@ -99,7 +98,6 @@ class Handler(BaseHTTPRequestHandler):
 
             # Construct the list items
             for (song_display_name, song_constructed_filepath, song_filepath) in media_items:
-                print("{} -- {} -- {}".format(song_display_name, song_constructed_filepath, song_filepath))
                 playlist_item = """<li><a href="__SONG_FILENAME__">__SONG_NAME__</a></li>\n""".replace("__SONG_FILENAME__", song_constructed_filepath).replace("__SONG_NAME__", song_display_name)
                 playlist_items = playlist_items + playlist_item
 
