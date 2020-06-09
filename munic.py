@@ -93,7 +93,7 @@ class Handler(BaseHTTPRequestHandler):
             if dirs:
                 # Sort the keys (dir names) alphabetically
                 dir_names = [ dir_name for dir_name in dirs.keys() ]
-                dir_names.sort()
+                dir_names.sort(key=str.casefold)
                 for dir_name in dir_names:
                     link = "/playlist/" + requested_path + "/" + dir_name
                     playlist_link = """<p><a href="__LINK__">__NAME__</a></p>""".replace("__LINK__", link).replace("__NAME__", dir_name)
@@ -167,7 +167,7 @@ def get_media(dir_dict, prefix: str = ""):
         result = result + get_media(dirs[sub_dir], prefix + sub_dir+": ")
 
     # Sort alphabetially
-    result.sort()
+    result.sort(key=lambda tup: tup[0].casefold())
 
     return result
 
