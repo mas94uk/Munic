@@ -11,9 +11,14 @@ import sys
 import os
 import code # For code.interact()
 
+# Whether to use HTTPS
 USE_HTTPS = False
 
+# Data structure containing the media library 
 library = None
+
+# Location of this sript
+script_path = None
 
 class Handler(BaseHTTPRequestHandler):
 
@@ -40,10 +45,9 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_response(404)
                 self.end_headers()
         elif name == "audioPlayer.js":
-            # TODO sort path
             self.send_response(200)
             self.end_headers()
-            self.send_file("/home/mark/Development/Munic/audioPlayer.js")
+            self.send_file(os.path.join(script_path, "audioPlayer.js"))
         elif name == "":
             # TODO special case for front page
             self.send_response(200)
@@ -87,7 +91,10 @@ class Handler(BaseHTTPRequestHandler):
             # Build the links section
             playlist_links = ""
             if dirs:
-                for dir_name in dirs.keys():
+                # Sort the keys (dir names) alphabetically
+                dir_names = [ dir_name for dir_name in dirs.keys() ]
+                dir_names.sort()
+                for dir_name in dir_names:
                     link = "/playlist/" + requested_path + "/" + dir_name
                     playlist_link = """<p><a href="__LINK__">__NAME__</a></p>""".replace("__LINK__", link).replace("__NAME__", dir_name)
                     playlist_links = playlist_links + playlist_link
@@ -107,40 +114,11 @@ class Handler(BaseHTTPRequestHandler):
                 playlist_item = """<li><a href="__SONG_FILENAME__">__SONG_NAME__</a></li>\n""".replace("__SONG_FILENAME__", song_filename).replace("__SONG_NAME__", song_name)
                 playlist_items = playlist_items + playlist_item
 
-
-            # for song_filename in music_filenames:
-            #     # Get the song title from the filepath-- the filename, wuthout the extension
-            #     parts = song_filename.split("/")
-            #     filename = parts[-1]
-            #     parts = filename.split(".")
-            #     song_name = parts[0]
-
-            #     playlist_item = """<li><a href="__SONG_FILENAME__">__SONG_NAME__</a></li>\n""".replace("__SONG_FILENAME__", song_filename).replace("__SONG_NAME__", song_name)
-            #     playlist_items = playlist_items + playlist_item
-
             # Drop the playlist content into the html template
             html = html.replace("__PLAYLIST_ITEMS__", playlist_items)
 
 
             self.wfile.write(html.encode("utf-8"))
-
-            # songs_html = ""
-            # for music_filename in music_filenames:
-            #     # Get the song title from the filepath-- the filename, wuthout the extension
-            #     parts = music_filename.split("/")
-            #     filename = parts[-1]
-            #     parts = filename.split(".")
-            #     song_title = parts[0]
-
-            #     # Generate HTML to present a player for this song
-            #     song_html = """<p><audio controls><source src="__FILE__" type="audio/mpeg">Your browser does not support the audio element.</audio>__TITLE__</p>"""
-            #     song_html = song_html.replace("__FILE__", music_filename).replace("__TITLE__", song_title)
-            #     songs_html += song_html
-
-            #     # TODO: This basically works, but the brower loads EVERY mp3 in advance.
-            #     # TODO: We need to put a playlist in so it loads them as needed
-
-            # self.wfile.write(songs_html.encode("utf-8"))
         else:
             # Not expeted: do nothing
             print("File {} not supported - returning nothing".format(name))
@@ -174,7 +152,7 @@ def run():
     server.serve_forever()
 
 """ Get a complete, flat list of all media in the library.
-Returns a list of tuples of (song name, media filename).
+Returns an alphabetical list of tuples of (song name, media filename).
 Song names are prefixed with subdir names if they are in sub-directories."""
 def get_media(dir_dict, prefix: str = ""):
     media = dir_dict["media"]
@@ -187,6 +165,9 @@ def get_media(dir_dict, prefix: str = ""):
         result.append( (full_media_name, media_filename) )
     for sub_dir in dirs.keys():
         result = result + get_media(dirs[sub_dir], prefix + sub_dir+": ")
+
+    # Sort alphabetially
+    result.sort()
 
     return result
 
@@ -246,23 +227,17 @@ def load_library(media_dirs):
     return library
 
 if __name__ == '__main__':
+    # TODO proper command-line parsing and help
     if len(sys.argv) < 2:
         print("Specify one (or more) file lists")
         exit(-1)
+
+    # Get the source directory
+    script_path = os.path.dirname(os.path.realpath(__file__))
 
     # Load the library of songs to serve
     library = load_library(sys.argv[1:])
     # code.interact(local=locals())
 
-    # TODO: Need to think about how to structure them and how to sensibly create playlists
 
-    # Temp hack: Load a list of files to serve, from the supplied files
-    # music_filenames = []
-    # for file_list_file in sys.argv[1:]:
-    #     with open(file_list_file) as music_filenames_file:
-    #         new_music_filenames = music_filenames_file.readlines()
-    #         new_music_filenames = [ music_filename.strip() for music_filename in new_music_filenames ]
-    #         print("Read {} files from {}".format(len(new_music_filenames), file_list_file))
-    #         music_filenames = music_filenames + new_music_filenames
-    # print("Read {} files".format(len(music_filenames)))
     run()
