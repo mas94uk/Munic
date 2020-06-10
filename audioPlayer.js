@@ -32,12 +32,14 @@ class AudioPlaylist{
         return this.trackOrder;
     }
     setTrack(arrayPos){
-    
         var liPos = this.trackOrder[arrayPos]; // convert array index to html index
         this.player.src = $("#"+this.playlistId+ " li a").eq(liPos).attr("href");
         $("."+this.currentClass).removeClass(this.currentClass);
         $("#"+this.playlistId+ " li").eq(liPos).addClass(this.currentClass);
         this.trackPos = arrayPos; // update based on array index position
+        var nowPlaying = $("#"+this.playlistId+ " li a").eq(liPos)[0].text;
+        this.title.innerHTML = nowPlaying;
+        this.nowPlaying.innerHTML = nowPlaying;
     }
     prevTrack(){
         if(this.trackPos == 0)
@@ -120,6 +122,8 @@ class AudioPlaylist{
         this.loop = (config.loop === true) ? true : false;
         this.trackPos = 0;
         this.trackOrder = [];
+        this.title = $("#title")[0];
+        this.nowPlaying = document.getElementById("nowplaying");
         for(var i = 0; i < this.length; i++){
             this.trackOrder.push(i);
         }
@@ -148,7 +152,6 @@ class AudioPlaylist{
         *       handle end of track
         *
         */
-        
         this.player.addEventListener("ended", function(){
             // if last track ended
             if(classObj.trackPos < classObj.length - 1){

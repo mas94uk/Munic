@@ -52,18 +52,18 @@ class Handler(BaseHTTPRequestHandler):
             parts = requested_path.split("/")
             base_dict = library
             dirs = base_dict["dirs"]
+            # Remove empty parts which result from splitting empty strings etc.
+            parts = [ part for part in parts if part]
             for part in parts:
-                # If the path part is non-empty
-                if part:
-                    print("Part {}".format(part))
-                    # If that directory does not exist
-                    if part not in dirs.keys():
-                        print("Failed to find {} - failed at {}".format(requested_path, part))
-                        self.send_response(404)
-                        self.end_headers
-                        return
-                    base_dict = dirs[part]
-                    dirs = base_dict["dirs"]
+                print("Part {}".format(part))
+                # If that directory does not exist
+                if part not in dirs.keys():
+                    print("Failed to find {} - failed at {}".format(requested_path, part))
+                    self.send_response(404)
+                    self.end_headers
+                    return
+                base_dict = dirs[part]
+                dirs = base_dict["dirs"]
 
             # Requested path is known to be available now, so send response
             self.send_response(200)
@@ -76,7 +76,11 @@ class Handler(BaseHTTPRequestHandler):
             # Construct the page. This will be all the directories directly under this one, as links,
             # and all the files from this directory onwards, as a playlist.
 
-            # TODO: Header - perhaps the requested path with /s replaced with <p/> and progressively smaller fonts?
+            # Drop in the heading text: an indication of the path, or "Munic" if none
+            heading = ": ".join(parts)
+            if len(heading) == 0:
+                heading = "Munic"
+            html = html.replace("__HEADING__", heading)
 
             # Build the song links section
             playlist_links = ""
@@ -194,6 +198,7 @@ def get_media(dir_dict, path: str = ""):
 
     return result
 
+# TODO Remove empty directories (may need to repeat until none are found as diretory may become empty if we remove its only subdir)
 def load_library(media_dirs):
     # Walk the given path, creating a data structure as follows:
     # A recursive structure of a dict representing the top level, containing:

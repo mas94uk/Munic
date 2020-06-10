@@ -3,7 +3,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>HTML5 Audio Playlist</title>
+    <title id="title">HTML5 Audio Playlist</title>
+    <h1><p>__HEADING__</p></h1> 
     <style>
         #playlist{
             list-style: none;
@@ -15,20 +16,27 @@
         #playlist .current-song a{
             color:blue;
         }
+        #audioPlayer{
+                margin: 5%;
+                width: 90%;
+        }
     </style>
 </head>
 <body>
     __PLAYLIST_LINKS__
 
-    <audio src="" controls id="audioPlayer" >
+    <p id="nowplaying">Now playing</p>
+    <audio src="" controls id="audioPlayer">
         Sorry, your browser doesn't support html5!
     </audio>
+    <a href="" onclick="playlist.prevTrack();">Prev Track</a>
+    <a href="" onclick="playlist.nextTrack();">Next Track</a>
+    <a href="" onclick="playlist.toggleShuffle();">Toggle Shuffle</a>
+
     <ul id="playlist">
         __PLAYLIST_ITEMS__
     </ul>
-    <a href="#" onclick="playlist.prevTrack();">Prev Track</a>
-    <a href="#" onclick="playlist.nextTrack();">Next Track</a>
-    <a href="#" onclick="playlist.toggleShuffle();">Toggle Shuffle</a>
+
     <script src="https://code.jquery.com/jquery-2.2.0.js"></script>
     <script src="audioPlayer.js"></script>
     <script>
