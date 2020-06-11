@@ -4,13 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <title id="title">HTML5 Audio Playlist</title>
-    <h1><p>__HEADING__</p></h1> 
     <style>
+        @import url(https://fonts.googleapis.com/css?family=Exo+2:200i);
+
         #playlist{
             list-style: none;
         }
-        #playlist li a{
-            color:black;
+        a {
+            color:white;
             text-decoration: none;
         }
         #playlist .current-song a{
@@ -20,18 +21,94 @@
                 margin: 5%;
                 width: 90%;
         }
+        .unselectable {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+        :root {
+          /* Base font size */
+          font-size: 15px;   
+          
+          /* Set neon color */
+          --neon-text-color: #f40;
+          --neon-border-color: #08f;
+        }
+
+        body {
+          font-family: 'Exo 2', sans-serif;
+          justify-content: center;
+          align-items: center;  
+          background: #000;
+          min-height: 100vh;*/
+        }
+        .box {
+          border: 0.4rem solid #fff;
+          border-radius: 2rem;
+        }
+        p {
+            margin:0;
+        }
+        h1 {
+          font-size: 5rem;
+          font-weight: 550;
+          font-style: italic;
+          color: #fff;
+          text-align: center;
+          animation: flicker 1.5s infinite alternate;     
+          margin:1rem;
+        }
+        h2 {
+          font-size: 3rem;
+          font-weight: 200;
+          font-style: italic;
+          color: #fff;
+          text-align: center;
+          animation: flicker 1.5s infinite alternate;     
+          margin: 1rem;
+        }
+        h3 {
+          font-size: 2rem;
+          font-weight: 200;
+          font-style: italic;
+          color: #fff;
+          text-align: center;
+          /*padding: 4rem 6rem 5.5rem;*/
+/*          border: 0.4rem solid #fff;
+          border-radius: 2rem;
+          text-transform: uppercase;
+*/          animation: flicker 1.5s infinite alternate;     
+            margin: 1rem;
+        }
+
+        .center {
+            text-align: center;
+        }
+
+
+
     </style>
 </head>
-<body>
+<body class="unselectable">
+    <div class="box">
+    <h1><p>__HEADING0__</p></h1>
+    <h2><p>__HEADING1__</p></h2>
+    <h3><p>__HEADING2__</p></h3>
+    </div>
     __PLAYLIST_LINKS__
 
     <p id="nowplaying">Now playing</p>
     <audio src="" controls id="audioPlayer">
         Sorry, your browser doesn't support html5!
     </audio>
-    <a href="" onclick="playlist.prevTrack();">Prev Track</a>
-    <a href="" onclick="playlist.nextTrack();">Next Track</a>
-    <a href="" onclick="playlist.toggleShuffle();">Toggle Shuffle</a>
+    <div class="center">
+        <a href="" onclick="playlist.prevTrack();">Prev Track</a>
+        <a href="" onclick="playlist.nextTrack();">Next Track</a>
+        <a href="" onclick="playlist.toggleShuffle();">Toggle Shuffle</a>
+    </div>
 
     <ul id="playlist">
         __PLAYLIST_ITEMS__

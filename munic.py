@@ -20,6 +20,14 @@ library = None
 # Location of this sript
 script_path = None
 
+# TODO: Transcoding
+# 1. Can we send data slowly (with existing code or other)? Test, implement if possible.
+# 2. Can we start playing a song before the whole thing is received? Test.
+# 3. Put more sources in audio player: default + two others, named with id="..."
+# 4. Python to offer multiple sources: the native format first and two alternatives (ogg and mp3)
+# 5. Javascript to retrieve and set all three; player should auto choose the first it can play
+# 6. Python to transcode on the fly if non-native format requested. Make sure it is killed if connection drops!
+
 class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
@@ -76,11 +84,13 @@ class Handler(BaseHTTPRequestHandler):
             # Construct the page. This will be all the directories directly under this one, as links,
             # and all the files from this directory onwards, as a playlist.
 
-            # Drop in the heading text: an indication of the path, or "Munic" if none
-            heading = ": ".join(parts)
-            if len(heading) == 0:
-                heading = "Munic"
-            html = html.replace("__HEADING__", heading)
+            # Get the headings: parts of the path, or "Munic" if none
+            if len(parts) == 0:
+                parts.append("Munic")
+            parts.append("")
+            parts.append("")
+            for h in range(0,3):
+                html = html.replace("__HEADING{}__".format(h), parts[h])
 
             # Build the song links section
             playlist_links = ""
