@@ -92,7 +92,7 @@ class Handler(BaseHTTPRequestHandler):
             for h in range(0,3):
                 html = html.replace("__HEADING{}__".format(h), parts[h])
 
-            # Build the song links section
+            # Build the playlist links section
             playlist_links = ""
             if dirs:
                 # Sort the keys (dir names) alphabetically
@@ -100,7 +100,7 @@ class Handler(BaseHTTPRequestHandler):
                 dir_names.sort(key=str.casefold)
                 for dir_name in dir_names:
                     link = dir_name + "/"
-                    playlist_link = """<p><a href="__LINK__">__NAME__</a></p>""".replace("__LINK__", link).replace("__NAME__", dir_name)
+                    playlist_link = """<div><p><a href="__LINK__">__NAME__</a></p></div>""".replace("__LINK__", link).replace("__NAME__", dir_name)
                     playlist_links = playlist_links + playlist_link
 
             # Drop the links into the html document
