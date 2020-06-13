@@ -9,6 +9,7 @@ from urllib import parse as urllibparse
 import shutil
 import sys
 import os
+import unicodedata
 import code # For code.interact()
 
 # Whether to use HTTPS
@@ -54,11 +55,13 @@ class Handler(BaseHTTPRequestHandler):
             # Requesting a directory, which we treat as requesting a playlist for that location
             #   Queen/A Day At The Races/
 
-            # Get the requested path and navigate to it 
+            # Get the requested path and navigate to it.
+            # As we go, build up "display_name" with the properly-formatted names of the directories
             requested_path = name.rstrip("/")
             print("Requested path: {}".format(requested_path))
             parts = requested_path.split("/")
             base_dict = library
+            display_names = []
             dirs = base_dict["dirs"]
             # Remove empty parts which result from splitting empty strings etc.
             parts = [ part for part in parts if part]
@@ -71,6 +74,7 @@ class Handler(BaseHTTPRequestHandler):
                     self.end_headers
                     return
                 base_dict = dirs[part]
+                display_names.append(base_dict["display_name"]) 
                 dirs = base_dict["dirs"]
 
             # Requested path is known to be available now, so send response
@@ -84,23 +88,28 @@ class Handler(BaseHTTPRequestHandler):
             # Construct the page. This will be all the directories directly under this one, as links,
             # and all the files from this directory onwards, as a playlist.
 
-            # Get the headings: parts of the path, or "Munic" if none
-            if len(parts) == 0:
-                parts.append("Munic")
-            parts.append("")
-            parts.append("")
+            # Get the headings: the display names of the path, or "Munic" if none
+            if not display_names:
+                display_names.append("Munic")
+
+            # Lazy way to ensure there are enough items in the list to replace the headings
+            display_names.append("")
+            display_names.append("")
+
+            # Drop in the headings
             for h in range(0,3):
-                html = html.replace("__HEADING{}__".format(h), parts[h])
+                html = html.replace("__HEADING{}__".format(h), display_names[h])
 
             # Build the playlist links section
             playlist_links = ""
             if dirs:
                 # Sort the keys (dir names) alphabetically
                 dir_names = [ dir_name for dir_name in dirs.keys() ]
-                dir_names.sort(key=str.casefold)
+                dir_names.sort()
                 for dir_name in dir_names:
+                    display_name = dirs[dir_name]["display_name"]
                     link = dir_name + "/"
-                    playlist_link = """<div><p><a href="__LINK__">__NAME__</a></p></div>""".replace("__LINK__", link).replace("__NAME__", dir_name)
+                    playlist_link = """<div><p><a href="__LINK__">__NAME__</a></p></div>""".replace("__LINK__", link).replace("__NAME__", display_name)
                     playlist_links = playlist_links + playlist_link
 
             # Drop the links into the html document
@@ -182,12 +191,20 @@ def run():
         server.socket = ssl.wrap_socket(server.socket, keyfile='./key.pem', certfile='./cert.pem', server_side=True)
     server.serve_forever()
 
+
+"""Return a simplified (searchable) version of the string, with all accents replaced with un-accented charaters,
+all spaces and punctuation removed, and lower-case"""
+def simplify(string):
+    string = ''.join(c for c in unicodedata.normalize('NFD', string) if unicodedata.category(c) != 'Mn')
+    string = ''.join([c for c in string if c.isalnum()])
+    return string.lower()
+
 """ Get a complete, flat list of all media in the library.
 Returns an alphabetical list of tuples of (song display name, constructed filepath, media real filepath).
 "Constructed filepath" is the apparent filepath relative to the given dir-dict, e.g. "Queen/A Day At The Races/Drowse.mp3".
 (This includes the extension (e.g. .mp3) in case the browser requires it to play the file.)
 Song display names are prefixed with subdir names if they are in sub-directories."""
-def get_media(dir_dict, path: str = ""):
+def get_media(dir_dict, constructed_path: str = "", display_path: str = ""):
     media = dir_dict["media"]
     dirs = dir_dict["dirs"]
 
@@ -196,12 +213,14 @@ def get_media(dir_dict, path: str = ""):
     for media_display_name in media.keys():
         media_filepath = media[media_display_name]
         extension = os.path.splitext(media_filepath)[1]
-        full_media_name = path.replace("/", ": ") + media_display_name
-        constructed_filepath = path + media_display_name + extension 
+        full_media_name = display_path.replace("/", ": ") + media_display_name
+        constructed_filepath = constructed_path + media_display_name + extension 
         result.append( (full_media_name, constructed_filepath, media_filepath) )
     # Recurse into all sub-dirs, appending the directory name to the path
     for sub_dir in dirs.keys():
-        result = result + get_media(dirs[sub_dir], path + sub_dir + "/")
+        sub_dir_dict = dirs[sub_dir]
+        sub_dir_display_path = sub_dir_dict["display_name"]
+        result = result + get_media(sub_dir_dict, constructed_path + sub_dir + "/", display_path + sub_dir_display_path + "/")
 
     # Sort alphabetially
     result.sort(key=lambda tup: tup[0].casefold())
@@ -212,14 +231,18 @@ def get_media(dir_dict, path: str = ""):
 def load_library(media_dirs):
     # Walk the given path, creating a data structure as follows:
     # A recursive structure of a dict representing the top level, containing:
+    #  - "display_name" (properly-formatted name, for display)
     #  - "media" (dict of songname:filename)
-    #  - "dirs" (dict of dirname:directory-dict like the top level)
+    #  - "dirs" (dict of simplified-dirname:directory-dict like the top level)
     #  - "graphic" (graphic filename, if present)
     # The filenames will be the full filepath of the file.
+    # Directories will be indexed by "simplfied" name: a lower-case, alpha-numeric version of the real name.
     # Because we want to be able to overlay multiple directories, we cannot simply walk and create the structure as we find it.
     # Instead we check whether each directory exists and add it if not.
-    # This will have the free side-effect of de-duplicating any songs with identical artist/album/name.
-    library = { "media":{}, "dirs":{}, "graphic":None }
+    # This has the desirable side-effects of merging directories with effectively the same name, and de-duplicating any songs
+    # with identical artist/album/name.
+    library = { "display_name":None, "media":{}, "dirs":{}, "graphic":None }
+    # TODO Don't put empty stuff in, create when needed
     num_songs = 0
     num_graphics = 0
     for media_dir in media_dirs:
@@ -235,13 +258,16 @@ def load_library(media_dirs):
                 # Remove the root from the path to give the interesting part
                 sub_path = path[len(media_dir):].lstrip("/").rstrip("/")
 
-                # Ensure the dicts for this path exit in the library, and get the library dictionary into which the files should be added
+                # Ensure the dicts for this path exit in the library, and get the library dictionary into which the files should be added.
+                # Simplify the name, so that near-duplicates (Guns'n'Roses, Guns N Roses) are treated as the same.
                 parts = sub_path.split("/")
                 base_dict = library
                 for part in parts:
-                    if not part in base_dict["dirs"]:
-                        base_dict["dirs"][part] = { "media":{}, "dirs":{}, "graphic":None }
-                    base_dict = base_dict["dirs"][part]
+                    if part:    # (Directory might be empty meaning the root -- don't create a new dict for it!)
+                        part_simplified = simplify(part)
+                        if not part_simplified in base_dict["dirs"]:
+                            base_dict["dirs"][part_simplified] = { "display_name":part, "media":{}, "dirs":{}, "graphic":None }
+                        base_dict = base_dict["dirs"][part_simplified]
 
                 for music_file in music_files:
                     # Get the song name from the filename by stripping the extension
