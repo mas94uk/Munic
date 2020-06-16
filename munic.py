@@ -185,7 +185,9 @@ class Handler(BaseHTTPRequestHandler):
         mime_type, encoding = mimetypes.guess_type(localpath)
         with open(localpath, 'rb') as f:
             self.send_response(200)
-            self.send_header("Content-Length", os.fstat(f.fileno())[6])
+            length = os.fstat(f.fileno())[6]
+            print("File length: {}".format(length))
+            self.send_header("Content-Length", length)
             if mime_type:
                 self.send_header("Content-Type", mime_type)
             self.end_headers()
