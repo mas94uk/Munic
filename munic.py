@@ -10,6 +10,7 @@ import shutil
 import sys
 import os
 import unicodedata
+import mimetypes
 import code # For code.interact()
 
 # Whether to use HTTPS
@@ -31,12 +32,19 @@ script_path = None
 
 class Handler(BaseHTTPRequestHandler):
 
+    """ Constructor """
+    def __init__(self, request, client_address, server):
+        # Override the default protocol (HTTP/1.0).
+        # Note that this means we MUST provide an accurate Content-Length header!
+        self.protocol_version = "HTTP/1.1"
+
+        # Call the BaseHTTPRequestHandler constructor
+        super(Handler, self).__init__(request, client_address, server)
+
     def do_GET(self):
-        print("path: {}\n".format(self.path))
+        print("GET path: {} on thread {}\n".format(self.path, threading.get_ident()))
         name = self.path
-        # name = name.lstrip("/")
         name = urllibparse.unquote(name)
-        print("name: {}\n".format(name))
 
         # Front page
         if name == "":
@@ -46,9 +54,8 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write("Coming soon".encode("utf-8"))
         # If path is a static file...
         # Bit hacky but ignoring the path means we do not have to worry about relative paths
+        # TODO: Instead, put the right number of ../ in the link
         elif name.endswith("audioPlayer.js"):
-            self.send_response(200)
-            self.end_headers()
             self.send_file(os.path.join(script_path, "audioPlayer.js"))
         # If the url ends with a "/", treat it as a playlist request for that location 
         elif name.endswith("/"):
@@ -66,7 +73,6 @@ class Handler(BaseHTTPRequestHandler):
             # Remove empty parts which result from splitting empty strings etc.
             parts = [ part for part in parts if part]
             for part in parts:
-                print("Part {}".format(part))
                 # If that directory does not exist
                 if part not in dirs.keys():
                     print("Failed to find {} - failed at {}".format(requested_path, part))
@@ -76,10 +82,6 @@ class Handler(BaseHTTPRequestHandler):
                 base_dict = dirs[part]
                 display_names.append(base_dict["display_name"]) 
                 dirs = base_dict["dirs"]
-
-            # Requested path is known to be available now, so send response
-            self.send_response(200)
-            self.end_headers()
 
             # Read the playlist page template html from file
             with open("playlist.html") as html_file:
@@ -129,7 +131,7 @@ class Handler(BaseHTTPRequestHandler):
             # Drop the playlist content into the html template
             html = html.replace("__PLAYLIST_ITEMS__", playlist_items)
 
-            self.wfile.write(html.encode("utf-8"))
+            self.send_html(html)
 
         # Otherwise, assume the request is for a media file 
         else:
@@ -159,38 +161,47 @@ class Handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 return
             filepath = media[basename]
-            print("Sending file {}".format(filepath))
-            self.send_response(200)
-            self.end_headers()
             self.send_file(filepath)
 
     def send_html(self, htmlstr):
-        "Simply returns htmlstr with the appropriate content-type/status."
-        # self.send_resp_headers(200, {'Content-type': 'text/html; charset=utf-8'}, end=True)
-        self.wfile.write(htmlstr.encode("utf-8"))
+        "Simply sends htmlstr with status 200 and the correct content-type and content-length."
+
+        # Encode the HTML
+        encoded = htmlstr.encode("utf-8")
+        print("Sending HTML ({} bytes)".format(len(encoded)))
+
+        self.send_response(200)
+        self.send_header("Content-Length", len(encoded))
+        self.send_header("Content-Type", 'text/html; charset=utf-8')
+        self.end_headers()
+
+        self.wfile.write(encoded)
 
     def send_file(self, localpath):
-        "Does what it says on the tin! Includes correct content-type/length."
+        "Sends the specified file with status 200. and correct content-type and content-length."
+        print("Sending file {}".format(localpath))
+
+        # Get the mime type of the file
+        mime_type, encoding = mimetypes.guess_type(localpath)
         with open(localpath, 'rb') as f:
-            # self.send_resp_headers(200,
-            #                        {'Content-length': os.fstat(f.fileno())[6],
-            #                         'Content-type': mimetypes.guess_type(localpath)[0]},
-            #                        end=True)
-            shutil.copyfileobj(f, self.wfile)
+            self.send_response(200)
+            self.send_header("Content-Length", os.fstat(f.fileno())[6])
+            if mime_type:
+                self.send_header("Content-Type", mime_type)
+            self.end_headers()
+
+            try:
+                shutil.copyfileobj(f, self.wfile)
+                print("Successfully sent file {}".format(localpath))
+            except BrokenPipeError:
+                print("Broken pipe error sending {}".format(localpath))
+            except ConnectionResetError:
+                print("Connetion reset by peer sending {}".format(localpath))
+        print("File send finished on thread {}".format(threading.get_ident()))
 
 
 class ThreadingSimpleServer(ThreadingMixIn, HTTPServer):
     pass
-
-
-def run():
-    # Serve on all interfaces, port 4444
-    server = ThreadingSimpleServer(('0.0.0.0', 4444), Handler)
-    if USE_HTTPS:
-        import ssl
-        server.socket = ssl.wrap_socket(server.socket, keyfile='./key.pem', certfile='./cert.pem', server_side=True)
-    server.serve_forever()
-
 
 """Return a simplified (searchable) version of the string, with all accents replaced with un-accented charaters,
 all spaces and punctuation removed, and lower-case"""
@@ -242,7 +253,7 @@ def load_library(media_dirs):
     # This has the desirable side-effects of merging directories with effectively the same name, and de-duplicating any songs
     # with identical artist/album/name.
     library = { "display_name":None, "media":{}, "dirs":{}, "graphic":None }
-    # TODO Don't put empty stuff in, create when needed
+    # TODO Don't put empty stuff in, create ditionary entries when needed
     num_songs = 0
     num_graphics = 0
     for media_dir in media_dirs:
@@ -301,7 +312,12 @@ if __name__ == '__main__':
 
     # Load the library of songs to serve
     library = load_library(sys.argv[1:])
-    # code.interact(local=locals())
 
+    # Serve on all interfaces, port 4444
+    server = ThreadingSimpleServer(('0.0.0.0', 4444), Handler)
 
-    run()
+    if USE_HTTPS:
+        import ssl
+        server.socket = ssl.wrap_socket(server.socket, keyfile='./key.pem', certfile='./cert.pem', server_side=True)
+    server.serve_forever()
+
