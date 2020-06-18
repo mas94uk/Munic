@@ -11,6 +11,7 @@ import sys
 import os
 import unicodedata
 import mimetypes
+import logging
 import code # For code.interact()
 
 # Whether to use HTTPS
@@ -21,6 +22,9 @@ library = None
 
 # Location of this sript
 script_path = None
+
+# Ongoing media GETs - for debug
+media_gets = {}
 
 # TODO: Transcoding
 # 1. Can we send data slowly (with existing code or other)? Test, implement if possible.
@@ -42,7 +46,7 @@ class Handler(BaseHTTPRequestHandler):
         super(Handler, self).__init__(request, client_address, server)
 
     def do_GET(self):
-        print("GET path: {} on thread {}\n".format(self.path, threading.get_ident()))
+        logging.info("GET path: {} on thread {}\n".format(self.path, threading.get_ident()))
         name = self.path
         name = urllibparse.unquote(name)
 
@@ -65,7 +69,7 @@ class Handler(BaseHTTPRequestHandler):
             # Get the requested path and navigate to it.
             # As we go, build up "display_name" with the properly-formatted names of the directories
             requested_path = name.rstrip("/")
-            print("Requested path: {}".format(requested_path))
+            logging.debug("Requested path: {}".format(requested_path))
             parts = requested_path.split("/")
             base_dict = library
             display_names = []
@@ -75,7 +79,7 @@ class Handler(BaseHTTPRequestHandler):
             for part in parts:
                 # If that directory does not exist
                 if part not in dirs.keys():
-                    print("Failed to find {} - failed at {}".format(requested_path, part))
+                    logging.warning("Failed to find {} - failed at {}".format(requested_path, part))
                     self.send_response(404)
                     self.end_headers
                     return
@@ -135,7 +139,7 @@ class Handler(BaseHTTPRequestHandler):
 
         # Otherwise, assume the request is for a media file 
         else:
-            print("Attempting to get file {}".format(name))
+            logging.debug("Attempting to get file {}".format(name))
 
             # Get the real media filename from the library by walking down the structure to the right directory
             parts = name.lstrip("/").split("/")
@@ -143,7 +147,7 @@ class Handler(BaseHTTPRequestHandler):
             for dir_part in parts[:-1]:
                 dirs = base_dict["dirs"]
                 if dir_part not in dirs.keys():
-                    print("Requested unknown file: {} - failed at {}".format(name, dir_part))
+                    logging.warning("Requested unknown file: {} - failed at {}".format(name, dir_part))
                     self.send_response(404)
                     self.end_headers()
                     return
@@ -156,7 +160,7 @@ class Handler(BaseHTTPRequestHandler):
             # Find the song in the dictionary (display name is key) and get its real filepath (the value)
             media = base_dict["media"]
             if basename not in media.keys():
-                print("File {} not found in directory".format(basename))
+                logging.warning("File {} not found in library".format(basename))
                 self.send_response(404)
                 self.end_headers()
                 return
@@ -168,7 +172,7 @@ class Handler(BaseHTTPRequestHandler):
 
         # Encode the HTML
         encoded = htmlstr.encode("utf-8")
-        print("Sending HTML ({} bytes)".format(len(encoded)))
+        logging.info("Sending HTML ({} bytes)".format(len(encoded)))
 
         self.send_response(200)
         self.send_header("Content-Length", len(encoded))
@@ -179,14 +183,15 @@ class Handler(BaseHTTPRequestHandler):
 
     def send_file(self, localpath):
         "Sends the specified file with status 200. and correct content-type and content-length."
-        print("Sending file {}".format(localpath))
+        logging.info("Sending file {}".format(localpath))
+        media_gets[threading.get_ident()] = localpath
 
         # Get the mime type of the file
         mime_type, encoding = mimetypes.guess_type(localpath)
         with open(localpath, 'rb') as f:
             self.send_response(200)
             length = os.fstat(f.fileno())[6]
-            print("File length: {}".format(length))
+            logging.debug("File length: {}".format(length))
             self.send_header("Content-Length", length)
             if mime_type:
                 self.send_header("Content-Type", mime_type)
@@ -194,12 +199,14 @@ class Handler(BaseHTTPRequestHandler):
 
             try:
                 shutil.copyfileobj(f, self.wfile)
-                print("Successfully sent file {}".format(localpath))
+                logging.info("Successfully sent file {}".format(localpath))
             except BrokenPipeError:
-                print("Broken pipe error sending {}".format(localpath))
+                logging.warn("Broken pipe error sending {}".format(localpath))
             except ConnectionResetError:
-                print("Connetion reset by peer sending {}".format(localpath))
-        print("File send finished on thread {}".format(threading.get_ident()))
+                logging.warn("Connetion reset by peer sending {}".format(localpath))
+        logging.info("File send finished on thread {}".format(threading.get_ident()))
+        media_gets.pop(threading.get_ident())
+        logging.debug("Ongoing transfers: " + str(media_gets)) 
 
 
 class ThreadingSimpleServer(ThreadingMixIn, HTTPServer):
@@ -259,7 +266,7 @@ def load_library(media_dirs):
     num_songs = 0
     num_graphics = 0
     for media_dir in media_dirs:
-        print("Scanning media dir {}".format(media_dir))
+        logging.info("Scanning media dir {}".format(media_dir))
         for path, dirs, files in os.walk(media_dir):
             # We are only interested in files with music extensions
             music_files = [file for file in files if file.lower().endswith((".mp3", ".m4a", ".ogg", ".wav", ".flac", ".wma")) ]
@@ -299,14 +306,15 @@ def load_library(media_dirs):
                         base_dict["graphc"] = graphic_filename
                         num_graphics += 1
 
-        print("Loaded {} songs and {} graphics".format(num_songs, num_graphics))
+        logging.info("Loaded {} songs and {} graphics".format(num_songs, num_graphics))
 
     return library
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(thread)d %(levelname)s %(funcName)s %(message)s')
     # TODO proper command-line parsing and help
     if len(sys.argv) < 2:
-        print("Specify one (or more) file lists")
+        logging.error("Specify one (or more) file lists")
         exit(-1)
 
     # Get the source directory
