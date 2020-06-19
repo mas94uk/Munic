@@ -6,12 +6,12 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingMixIn
 import threading
 from urllib import parse as urllibparse
-import shutil
 import sys
 import os
 import unicodedata
 import mimetypes
 import logging
+import re
 import code # For code.interact()
 
 # Whether to use HTTPS
@@ -47,6 +47,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         logging.info("GET path: {} on thread {}\n".format(self.path, threading.get_ident()))
+
         name = self.path
         name = urllibparse.unquote(name)
 
@@ -141,6 +142,18 @@ class Handler(BaseHTTPRequestHandler):
         else:
             logging.debug("Attempting to get file {}".format(name))
 
+            # Get the file range, if specified by the requester
+            range_header = self.headers.get("Range")
+            range_start = None
+            range_end = None
+            if range_header:
+                logging.debug("Range header: {}".format(range_header))
+                match = re.match("bytes[= :](\\d+|)\\-(\\d+|)$", range_header, re.IGNORECASE)
+                if match and match.lastindex == 2:
+                    range_start = int(match[1]) if match[1].isnumeric() else None
+                    range_end = int(match[2]) if match[2].isnumeric() else None 
+                    logging.debug("Requested range {}-{}".format(range_start, range_end))
+
             # Get the real media filename from the library by walking down the structure to the right directory
             parts = name.lstrip("/").split("/")
             base_dict = library
@@ -165,7 +178,9 @@ class Handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 return
             filepath = media[basename]
-            self.send_file(filepath)
+            self.send_file(filepath, range_start, range_end)
+
+        logging.info("GET completed")
 
     def send_html(self, htmlstr):
         "Simply sends htmlstr with status 200 and the correct content-type and content-length."
@@ -177,11 +192,12 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Length", len(encoded))
         self.send_header("Content-Type", 'text/html; charset=utf-8')
+        self.send_header("Accept-Ranges", 'bytes')
         self.end_headers()
 
         self.wfile.write(encoded)
 
-    def send_file(self, localpath):
+    def send_file(self, localpath, range_start:int = None, range_end:int = None):
         "Sends the specified file with status 200. and correct content-type and content-length."
         logging.info("Sending file {}".format(localpath))
         media_gets[threading.get_ident()] = localpath
@@ -189,16 +205,56 @@ class Handler(BaseHTTPRequestHandler):
         # Get the mime type of the file
         mime_type, encoding = mimetypes.guess_type(localpath)
         with open(localpath, 'rb') as f:
-            self.send_response(200)
-            length = os.fstat(f.fileno())[6]
-            logging.debug("File length: {}".format(length))
-            self.send_header("Content-Length", length)
+
+            # If the file is not seekable, end the whole thing.
+            # (We could read and discard if this is a problem, but it is not expected to happen.)
+            if not f.seekable():
+                logging.info("File not seekable: not sending range")
+                range_start = None
+                range_end = None
+
+            file_length = os.fstat(f.fileno())[6]
+            logging.debug("File length: {}".format(file_length))
+
+            # Populate ranges if not already done
+            if not range_start:
+                range_start = 0
+            if not range_end:
+                range_end = file_length - 1
+            # Sanity check them
+            if range_start>range_end or range_start<0 or range_end>=file_length:
+                self.send_response(416)
+                self.end_headers()
+                return
+
+            # If we have requested less than the whole file
+            if range_start>0 or range_end<file_length-1:
+                logging.info("Sending range")
+                content_length = 1 + range_end - range_start
+                self.send_response(206) # Partial content
+                self.send_header("Content-Range", "bytes={}-{}".format(range_start, range_end))
+            else:
+                content_length = file_length
+                self.send_response(200)
+
+            self.send_header("Accept-Ranges", 'bytes')
+            self.send_header("Content-Length", content_length)
             if mime_type:
                 self.send_header("Content-Type", mime_type)
             self.end_headers()
 
             try:
-                shutil.copyfileobj(f, self.wfile)
+                # Seek to the desired start
+                f.seek(range_start)
+
+                # Read and send 16kB at a time
+                while content_length > 0:
+                    length_to_read = min(16384, content_length)
+                    data = f.read(length_to_read)
+                    length_read = len(data)
+                    self.wfile.write(data)
+                    content_length -= length_read
+
                 logging.info("Successfully sent file {}".format(localpath))
             except BrokenPipeError:
                 logging.warn("Broken pipe error sending {}".format(localpath))
