@@ -80,7 +80,7 @@ class Handler(BaseHTTPRequestHandler):
             for part in parts:
                 # If that directory does not exist
                 if part not in dirs.keys():
-                    logging.warning("Failed to find {} - failed at {}".format(requested_path, part))
+                    logging.warn("Failed to find {} - failed at {}".format(requested_path, part))
                     self.send_response(404)
                     self.end_headers
                     return
@@ -150,8 +150,9 @@ class Handler(BaseHTTPRequestHandler):
                 logging.debug("Range header: {}".format(range_header))
                 match = re.match("bytes[= :](\\d+|)\\-(\\d+|)$", range_header, re.IGNORECASE)
                 if match and match.lastindex == 2:
-                    range_start = int(match[1]) if match[1].isnumeric() else None
-                    range_end = int(match[2]) if match[2].isnumeric() else None 
+                    groups = match.groups()
+                    range_start = int(groups[0]) if groups[0].isnumeric() else None
+                    range_end = int(groups[1]) if groups[1].isnumeric() else None 
                     logging.debug("Requested range {}-{}".format(range_start, range_end))
 
             # Get the real media filename from the library by walking down the structure to the right directory
@@ -197,29 +198,34 @@ class Handler(BaseHTTPRequestHandler):
 
         self.wfile.write(encoded)
 
+    """Send the specified file with status 200. and correct content-type and content-length."""
     def send_file(self, localpath, range_start:int = None, range_end:int = None):
-        "Sends the specified file with status 200. and correct content-type and content-length."
         logging.info("Sending file {}".format(localpath))
         media_gets[threading.get_ident()] = localpath
 
+        # Was a range requested?
+        range_requested = True if range_start is not None or range_end is not None else False
+
         # Get the mime type of the file
         mime_type, encoding = mimetypes.guess_type(localpath)
-        with open(localpath, 'rb') as f:
 
+        with open(localpath, 'rb') as f:
             # If the file is not seekable, end the whole thing.
             # (We could read and discard if this is a problem, but it is not expected to happen.)
-            if not f.seekable():
-                logging.info("File not seekable: not sending range")
+            if range_requested and not f.seekable():
+                logging.warn("File not seekable: not sending range")
+                range_requested = False
                 range_start = None
                 range_end = None
 
+            # Find the length of the file
             file_length = os.fstat(f.fileno())[6]
             logging.debug("File length: {}".format(file_length))
 
             # Populate ranges if not already done
-            if not range_start:
+            if range_start is None:
                 range_start = 0
-            if not range_end:
+            if range_end is None:
                 range_end = file_length - 1
             # Sanity check them
             if range_start>range_end or range_start<0 or range_end>=file_length:
@@ -227,13 +233,20 @@ class Handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 return
 
-            # If we have requested less than the whole file
-            if range_start>0 or range_end<file_length-1:
-                logging.info("Sending range")
+            # If the requesed range was the entire file, do not send as a range.
+            # This works around what appears to be a bug in Chrome and Chromium:
+            # they request range 0-, but don't like to receive it as a range!
+            if range_start==0 and range_end==file_length-1:
+                logging.warn("*****")
+                range_requested = False
+
+            if range_requested:
+                logging.info("Sending range {}-{}".format(range_start, range_end))
                 content_length = 1 + range_end - range_start
                 self.send_response(206) # Partial content
                 self.send_header("Content-Range", "bytes={}-{}".format(range_start, range_end))
             else:
+                logging.info("Sending entire file")
                 content_length = file_length
                 self.send_response(200)
 
@@ -256,8 +269,8 @@ class Handler(BaseHTTPRequestHandler):
                     content_length -= length_read
 
                 logging.info("Successfully sent file {}".format(localpath))
-            except BrokenPipeError:
-                logging.warn("Broken pipe error sending {}".format(localpath))
+            # except BrokenPipeError:
+            #     logging.warn("Broken pipe error sending {}".format(localpath))
             except ConnectionResetError:
                 logging.warn("Connetion reset by peer sending {}".format(localpath))
         logging.info("File send finished on thread {}".format(threading.get_ident()))
