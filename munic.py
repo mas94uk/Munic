@@ -237,7 +237,7 @@ class Handler(BaseHTTPRequestHandler):
             # This works around what appears to be a bug in Chrome and Chromium:
             # they request range 0-, but don't like to receive it as a range!
             if range_start==0 and range_end==file_length-1:
-                logging.warn("*****")
+                logging.debug("Full range requested -> not sending as range")
                 range_requested = False
 
             if range_requested:
@@ -269,8 +269,8 @@ class Handler(BaseHTTPRequestHandler):
                     content_length -= length_read
 
                 logging.info("Successfully sent file {}".format(localpath))
-            # except BrokenPipeError:
-            #     logging.warn("Broken pipe error sending {}".format(localpath))
+            except BrokenPipeError:
+                logging.warn("Broken pipe error sending {}".format(localpath))
             except ConnectionResetError:
                 logging.warn("Connetion reset by peer sending {}".format(localpath))
         logging.info("File send finished on thread {}".format(threading.get_ident()))
