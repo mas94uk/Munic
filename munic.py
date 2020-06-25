@@ -233,18 +233,11 @@ class Handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 return
 
-            # If the requesed range was the entire file, do not send as a range.
-            # This works around what appears to be a bug in Chrome and Chromium:
-            # they request range 0-, but don't like to receive it as a range!
-            if range_start==0 and range_end==file_length-1:
-                logging.debug("Full range requested -> not sending as range")
-                range_requested = False
-
             if range_requested:
-                logging.info("Sending range {}-{}".format(range_start, range_end))
                 content_length = 1 + range_end - range_start
+                logging.info("Sending range {}-{} ({} bytes) out of {}".format(range_start, range_end, content_length, file_length))
                 self.send_response(206) # Partial content
-                self.send_header("Content-Range", "bytes={}-{}".format(range_start, range_end))
+                self.send_header("Content-Range", "bytes {}-{}/{}".format(range_start, range_end, file_length))
             else:
                 logging.info("Sending entire file")
                 content_length = file_length
@@ -257,22 +250,24 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
 
             try:
-                # Seek to the desired start
+                # Seek to the desired start (lazily just asusming it worked)
                 f.seek(range_start)
 
                 # Read and send 16kB at a time
+                total_sent = 0
                 while content_length > 0:
                     length_to_read = min(16384, content_length)
                     data = f.read(length_to_read)
                     length_read = len(data)
                     self.wfile.write(data)
                     content_length -= length_read
+                    total_sent += length_read
 
                 logging.info("Successfully sent file {}".format(localpath))
             except BrokenPipeError:
-                logging.warn("Broken pipe error sending {}".format(localpath))
+                logging.warn("Broken pipe error sending {} after {} bytes".format(localpath, total_sent))
             except ConnectionResetError:
-                logging.warn("Connetion reset by peer sending {}".format(localpath))
+                logging.warn("Connetion reset by peer sending {} after {} bytes".format(localpath, total_sent))
         logging.info("File send finished on thread {}".format(threading.get_ident()))
         media_gets.pop(threading.get_ident())
         logging.debug("Ongoing transfers: " + str(media_gets)) 
