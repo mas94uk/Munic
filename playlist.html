@@ -64,11 +64,25 @@
           justify-content: center;
           align-items: center;  
           background: #000;
-          min-height: 100vh;
         }
-        .box {
+        .topbox {
+          display: flex;
+          align-items: center;
           border: 0.4rem solid #fff;
           border-radius: 2rem;
+          width: 100%
+          justify-content: center;
+        }
+        .picture {
+          align-self: stretch;
+          #width: 20%;
+          max-height: 15rem; 
+          margin: 0.4rem;
+          border: 0.2rem solid #000;
+          border-radius: 1.5rem;  
+        }
+        .album {
+          flex: 1;
         }
         p {
             margin:0;
@@ -79,7 +93,6 @@
           font-style: italic;
           color: #fff;
           text-align: center;
-          /*animation: flicker 1.5s infinite alternate;     */
           margin:1rem;
         }
         h2 {
@@ -88,7 +101,6 @@
           font-style: italic;
           color: #fff;
           text-align: center;
-          /*animation: flicker 1.5s infinite alternate;     */
           margin: 1rem;
         }
         h3 {
@@ -97,7 +109,6 @@
           font-style: italic;
           color: #fff;
           text-align: center;
-          /*animation: flicker 1.5s infinite alternate;     */
           margin: 1rem;
         }
 
@@ -137,10 +148,13 @@
     </style>
 </head>
 <body class="unselectable">
-    <div class="box">
-    <h1><p>__HEADING0__</p></h1>
-    <h2><p>__HEADING1__</p></h2>
-    <h3><p>__HEADING2__</p></h3>
+    <div class="topbox">
+      <img src="__ALBUMART__" align="left" class="picture"/>
+      <div class="album">
+        <h1><p>__HEADING0__</p></h1>
+        <h2><p>__HEADING1__</p></h2>
+        <h3><p>__HEADING2__</p></h3>
+      </div>
     </div>
 
     <div id="playlistlinks">
@@ -164,7 +178,7 @@
     <div id="playergap"></div>
 
     <script src="https://code.jquery.com/jquery-2.2.0.js"></script>
-    <script src="audioPlayer.js"></script>
+    <script src="__AUDIOPLAY_JS__"></script>
     <script>
         
         /*

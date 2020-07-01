@@ -12,6 +12,7 @@ import unicodedata
 import mimetypes
 import logging
 import re
+import random
 import code # For code.interact()
 
 # Whether to use HTTPS
@@ -57,15 +58,16 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.end_headers()
             self.wfile.write("Coming soon".encode("utf-8"))
-        # If path is a static file...
-        # Bit hacky but ignoring the path means we do not have to worry about relative paths
-        # TODO: Instead, put the right number of ../ in the link
-        elif name.endswith("audioPlayer.js"):
+        # If requesting a static file...
+        elif name == "/audioPlayer.js":
             self.send_file(os.path.join(script_path, "audioPlayer.js"))
         # If the url ends with a "/", treat it as a playlist request for that location 
         elif name.endswith("/"):
             # Requesting a directory, which we treat as requesting a playlist for that location
             #   Queen/A Day At The Races/
+
+            # The root location, relative to the requested location
+            root = ""
 
             # Get the requested path and navigate to it.
             # As we go, build up "display_name" with the properly-formatted names of the directories
@@ -85,6 +87,7 @@ class Handler(BaseHTTPRequestHandler):
                     self.end_headers
                     return
                 base_dict = dirs[part]
+                root += "../"
                 display_names.append(base_dict["display_name"]) 
                 dirs = base_dict["dirs"]
 
@@ -94,6 +97,9 @@ class Handler(BaseHTTPRequestHandler):
 
             # Construct the page. This will be all the directories directly under this one, as links,
             # and all the files from this directory onwards, as a playlist.
+
+            # Drop in the audioplayer javascript file
+            html = html.replace("__AUDIOPLAY_JS__", root + "audioPlayer.js") 
 
             # Get the headings: the display names of the path, or "Munic" if none
             if not display_names:
@@ -126,16 +132,35 @@ class Handler(BaseHTTPRequestHandler):
             playlist_items = ""
 
             # Get all media files at or below this location
-            media_items = get_media(base_dict)
+            media_items = get_all_songs(base_dict)
 
             # Construct the list items
-            for (song_display_name, song_constructed_filepath, song_filepath) in media_items:
+            for (song_display_name, song_constructed_filepath) in media_items:
                 playlist_item = """<li><a href="__SONG_FILENAME__">__SONG_NAME__</a></li>\n""".replace("__SONG_FILENAME__", song_constructed_filepath).replace("__SONG_NAME__", song_display_name)
                 playlist_items = playlist_items + playlist_item
 
             # Drop the playlist content into the html template
             html = html.replace("__PLAYLIST_ITEMS__", playlist_items)
 
+            # Find album art
+            album_art = None
+            # If there is a graphic at this level, use it
+            if base_dict["graphic"]:
+                album_art = base_dict["graphic"]
+            # Otherwise get a random image from anywhere below this
+            else:
+                album_arts = get_all_graphics(base_dict)
+                logging.debug("Found {} graphics to choose from".format(len(album_arts)))
+
+                if album_arts:
+                    album_art = random.choice(album_arts)
+
+            # If no graphic found, use the default logo
+            if not album_art:
+                album_art = root + "munic.png"
+
+            # Drop in the album art
+            html = html.replace("__ALBUMART__", album_art);
             self.send_html(html)
 
         # Otherwise, assume the request is for a media file 
@@ -155,7 +180,7 @@ class Handler(BaseHTTPRequestHandler):
                     range_end = int(groups[1]) if groups[1].isnumeric() else None 
                     logging.debug("Requested range {}-{}".format(range_start, range_end))
 
-            # Get the real media filename from the library by walking down the structure to the right directory
+            # Get the dict representing the path of the requested file by walking down the structure to the right directory
             parts = name.lstrip("/").split("/")
             base_dict = library
             for dir_part in parts[:-1]:
@@ -171,14 +196,20 @@ class Handler(BaseHTTPRequestHandler):
             constructed_filename = parts[-1]
             basename = os.path.splitext(constructed_filename)[0]
 
-            # Find the song in the dictionary (display name is key) and get its real filepath (the value)
-            media = base_dict["media"]
-            if basename not in media.keys():
-                logging.warning("File {} not found in library".format(basename))
-                self.send_response(404)
-                self.end_headers()
-                return
-            filepath = media[basename]
+            # If the requested file is the graphic in this directory
+            if constructed_filename == base_dict["graphic"]:
+                filepath = base_dict["path"] + base_dict["graphic"]
+            else:
+                # Find the song in the dictionary (display name is key) and get its real filepath (the value)
+                media = base_dict["media"]
+                if basename not in media.keys():
+                    logging.warning("File {} not found in library".format(basename))
+                    self.send_response(404)
+                    self.end_headers()
+                    return
+                filepath = base_dict["path"] + media[basename]
+
+            logging.debug("Sending {}".format(filepath))
             self.send_file(filepath, range_start, range_end)
 
         logging.info("GET completed")
@@ -283,39 +314,67 @@ def simplify(string):
     string = ''.join([c for c in string if c.isalnum()])
     return string.lower()
 
-""" Get a complete, flat list of all media in the library.
-Returns an alphabetical list of tuples of (song display name, constructed filepath, media real filepath).
+""" Get a complete, flat list of all songs in the library.
+Returns an alphabetical list of tuples of (song display name, constructed filepath).
 "Constructed filepath" is the apparent filepath relative to the given dir-dict, e.g. "Queen/A Day At The Races/Drowse.mp3".
 (This includes the extension (e.g. .mp3) in case the browser requires it to play the file.)
 Song display names are prefixed with subdir names if they are in sub-directories."""
-def get_media(dir_dict, constructed_path: str = "", display_path: str = ""):
+def get_all_songs(dir_dict, constructed_path: str = "", display_path: str = ""):
     media = dir_dict["media"]
     dirs = dir_dict["dirs"]
 
-    result = []
+    results = []
     # Get all media files in this directory
     for media_display_name in media.keys():
         media_filepath = media[media_display_name]
         extension = os.path.splitext(media_filepath)[1]
-        full_media_name = display_path.replace("/", ": ") + media_display_name
+        media_display_name = display_path.replace("/", ": ") + media_display_name
         constructed_filepath = constructed_path + media_display_name + extension 
-        result.append( (full_media_name, constructed_filepath, media_filepath) )
+        results.append( (media_display_name, constructed_filepath) )
+
     # Recurse into all sub-dirs, appending the directory name to the path
     for sub_dir in dirs.keys():
         sub_dir_dict = dirs[sub_dir]
         sub_dir_display_path = sub_dir_dict["display_name"]
-        result = result + get_media(sub_dir_dict, constructed_path + sub_dir + "/", display_path + sub_dir_display_path + "/")
+        results = results + get_all_songs(sub_dir_dict, constructed_path + sub_dir + "/", display_path + sub_dir_display_path + "/")
+
+    # Sort alphabetially
+    results.sort(key=lambda tup: tup[0].casefold())
+
+    return results
+
+""" Get a complete, flat list of all graphics in the library.
+Returns a list of constructed filepaths.
+"Constructed filepath" is the apparent filepath relative to the given dir-dict, e.g. "Queen/A Day At The Races/folder.jpg".
+(This includes the extension (e.g. .jpg).)"""
+def get_all_graphics(dir_dict, constructed_path: str = "", display_path: str = ""):
+    dirs = dir_dict["dirs"]
+
+    result = []
+
+    # Get graphic file in this directory, if it exists
+    if dir_dict["graphic"]:
+        result.append(constructed_path + dir_dict["graphic"])
+
+    # Recurse into all sub-dirs, appending the directory name to the path
+    for sub_dir in dirs.keys():
+        sub_dir_dict = dirs[sub_dir]
+        sub_dir_display_path = sub_dir_dict["display_name"]
+        result = result + get_all_graphics(sub_dir_dict, constructed_path + sub_dir + "/", display_path + sub_dir_display_path + "/")
 
     # Sort alphabetially
     result.sort(key=lambda tup: tup[0].casefold())
 
     return result
 
+
+
 # TODO Remove empty directories (may need to repeat until none are found as diretory may become empty if we remove its only subdir)
 def load_library(media_dirs):
     # Walk the given path, creating a data structure as follows:
     # A recursive structure of a dict representing the top level, containing:
     #  - "display_name" (properly-formatted name, for display)
+    #  - "path" (the path to the real location of this directory, ending with "/")
     #  - "media" (dict of songname:filename)
     #  - "dirs" (dict of simplified-dirname:directory-dict like the top level)
     #  - "graphic" (graphic filename, if present)
@@ -325,7 +384,8 @@ def load_library(media_dirs):
     # Instead we check whether each directory exists and add it if not.
     # This has the desirable side-effects of merging directories with effectively the same name, and de-duplicating any songs
     # with identical artist/album/name.
-    library = { "display_name":None, "media":{}, "dirs":{}, "graphic":None }
+    # The location of the bottom level will be that of the script, so that the default graphic can be found.
+    library = { "display_name":None, "path":script_path +"/", "media":{}, "dirs":{}, "graphic":"munic.png" }
     # TODO Don't put empty stuff in, create ditionary entries when needed
     num_songs = 0
     num_graphics = 0
@@ -350,7 +410,7 @@ def load_library(media_dirs):
                     if part:    # (Directory might be empty meaning the root -- don't create a new dict for it!)
                         part_simplified = simplify(part)
                         if not part_simplified in base_dict["dirs"]:
-                            base_dict["dirs"][part_simplified] = { "display_name":part, "media":{}, "dirs":{}, "graphic":None }
+                            base_dict["dirs"][part_simplified] = { "display_name":part, "path":path.rstrip("/") + "/", "media":{}, "dirs":{}, "graphic":None }
                         base_dict = base_dict["dirs"][part_simplified]
 
                 for music_file in music_files:
@@ -358,7 +418,7 @@ def load_library(media_dirs):
                     song_name = os.path.splitext(music_file)[0]
 
                     # Insert the item, keyed by song name, with the full path as value
-                    base_dict["media"][song_name] = path.rstrip("/") + "/" + music_file
+                    base_dict["media"][song_name] = music_file
 
                     num_songs += 1
 
@@ -367,7 +427,7 @@ def load_library(media_dirs):
                     graphic_filename = path.rstrip("/") + "/" + graphic_file
                     size = os.path.getsize(graphic_filename)
                     if size > largest_size:
-                        base_dict["graphc"] = graphic_filename
+                        base_dict["graphic"] = graphic_file
                         num_graphics += 1
 
         logging.info("Loaded {} songs and {} graphics".format(num_songs, num_graphics))
