@@ -117,6 +117,7 @@ class Handler(BaseHTTPRequestHandler):
             playlist_links = ""
             if dirs:
                 # Sort the keys (dir names) alphabetically
+                # Note that we are sorting by "simplified name", so "The Beatles" is in with the Bs, not the Ts.
                 dir_names = [ dir_name for dir_name in dirs.keys() ]
                 dir_names.sort()
                 for dir_name in dir_names:
@@ -308,11 +309,13 @@ class ThreadingSimpleServer(ThreadingMixIn, HTTPServer):
     pass
 
 """Return a simplified (searchable) version of the string, with all accents replaced with un-accented charaters,
-all spaces and punctuation removed, and lower-case"""
+all spaces and punctuation removed, leading 'the' removed, and lower-case"""
 def simplify(string):
     string = ''.join(c for c in unicodedata.normalize('NFD', string) if unicodedata.category(c) != 'Mn')
-    string = ''.join([c for c in string if c.isalnum()])
-    return string.lower()
+    string = string.lower()
+    string = re.sub(r"^the\b", "", string, 1)               # Remove leading 'the' (whole word only)
+    string = ''.join([c for c in string if c.isalnum()])    # Remove anything non-alpha-numeric
+    return string
 
 """ Get a complete, flat list of all songs in the library.
 Returns an alphabetical list of tuples of (song display name, constructed filepath).
@@ -379,7 +382,7 @@ def load_library(media_dirs):
     #  - "dirs" (dict of simplified-dirname:directory-dict like the top level)
     #  - "graphic" (graphic filename, if present)
     # The filenames will be the full filepath of the file.
-    # Directories will be indexed by "simplfied" name: a lower-case, alpha-numeric version of the real name.
+    # Directories will be indexed by "simplfied" name: a lower-case, alpha-numeric version of the real name, with the first "the" removed.
     # Because we want to be able to overlay multiple directories, we cannot simply walk and create the structure as we find it.
     # Instead we check whether each directory exists and add it if not.
     # This has the desirable side-effects of merging directories with effectively the same name, and de-duplicating any songs
