@@ -328,8 +328,8 @@ def get_all_songs(dir_dict, constructed_path: str = "", display_path: str = ""):
     for media_display_name in media.keys():
         media_filepath = media[media_display_name]
         extension = os.path.splitext(media_filepath)[1]
-        media_display_name = display_path.replace("/", ": ") + media_display_name
         constructed_filepath = constructed_path + media_display_name + extension 
+        media_display_name = display_path.replace("/", ": ") + media_display_name
         results.append( (media_display_name, constructed_filepath) )
 
     # Recurse into all sub-dirs, appending the directory name to the path
@@ -387,6 +387,9 @@ def load_library(media_dirs):
     # The location of the bottom level will be that of the script, so that the default graphic can be found.
     library = { "display_name":None, "path":script_path +"/", "media":{}, "dirs":{}, "graphic":"munic.png" }
     # TODO Don't put empty stuff in, create ditionary entries when needed
+    # TODO There's a bug here: if the same album exists in two locations, we merge them but only store one path.
+    #      Hence half the links are broken -- most noticeable with the graphics.
+    #      Probably revert to storing the whole filepath, for seamless merging. 
     num_songs = 0
     num_graphics = 0
     for media_dir in media_dirs:
