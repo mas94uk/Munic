@@ -208,7 +208,7 @@ class Handler(BaseHTTPRequestHandler):
                     self.send_response(404)
                     self.end_headers()
                     return
-                filepath = base_dict["path"] + media[basename]
+                filepath = media[basename][1]
 
             logging.debug("Sending {}".format(filepath))
             self.send_file(filepath, range_start, range_end)
@@ -328,11 +328,11 @@ def get_all_songs(dir_dict, constructed_path: str = "", display_path: str = ""):
 
     results = []
     # Get all media files in this directory
-    for media_display_name in media.keys():
-        media_filepath = media[media_display_name]
+    for media_simplified_name in media.keys():
+        media_filepath = media[media_simplified_name][1]
         extension = os.path.splitext(media_filepath)[1]
-        constructed_filepath = constructed_path + media_display_name + extension 
-        media_display_name = display_path.replace("/", ": ") + media_display_name
+        constructed_filepath = constructed_path + media_simplified_name + extension 
+        media_display_name = display_path.replace("/", ": ") + media[media_simplified_name][0]
         results.append( (media_display_name, constructed_filepath) )
 
     # Recurse into all sub-dirs, appending the directory name to the path
@@ -371,14 +371,13 @@ def get_all_graphics(dir_dict, constructed_path: str = "", display_path: str = "
     return result
 
 
-
 # TODO Remove empty directories (may need to repeat until none are found as diretory may become empty if we remove its only subdir)
 def load_library(media_dirs):
     # Walk the given path, creating a data structure as follows:
     # A recursive structure of a dict representing the top level, containing:
     #  - "display_name" (properly-formatted name, for display)
     #  - "path" (the path to the real location of this directory, ending with "/")
-    #  - "media" (dict of songname:filename)
+    #  - "media" (dict of simplified-songname:tuple of (songname:filepath) )
     #  - "dirs" (dict of simplified-dirname:directory-dict like the top level)
     #  - "graphic" (graphic filename, if present)
     # The filenames will be the full filepath of the file.
@@ -422,9 +421,11 @@ def load_library(media_dirs):
                 for music_file in music_files:
                     # Get the song name from the filename by stripping the extension
                     song_name = os.path.splitext(music_file)[0]
+                    simplified_songname = simplify(song_name)
+                    song_filepath = path.rstrip("/") + "/" + music_file
 
                     # Insert the item, keyed by song name, with the full path as value
-                    base_dict["media"][song_name] = music_file
+                    base_dict["media"][simplified_songname] = (song_name, song_filepath)
 
                     num_songs += 1
 
