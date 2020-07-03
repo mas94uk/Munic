@@ -28,10 +28,13 @@
 
         #playerdiv{
             color: white;
+            background-color: black;
             position: fixed;
-            text-align: center;            
-            bottom: 20px;
-            width: 100%;
+            text-align: center;
+            padding-top: 10px;
+            padding-bottom: 20px;
+            bottom: 0;
+            width: calc(100% - 15px);
         }
         #playerdiv p{
             color: white;
@@ -39,6 +42,7 @@
         }
         #playerdiv a{
             color:white;
+            padding: 5px;
             text-decoration: none;
             margin-left: 100px;
         }
@@ -52,11 +56,7 @@
         }
         :root {
           /* Base font size */
-          font-size: 15px;   
-          
-          /* Set neon color */
-          --neon-text-color: #f40;
-          --neon-border-color: #08f;
+          font-size: 15px;
         }
 
         body {
@@ -134,9 +134,9 @@
             margin:5px;
         }
         #playlistlinks div:hover{
-          background-color: green ;
+          background-color: green;
           color: black;
-          #border: 1px solid green;
+          border: 1px solid green;
         }
         #playlistlinks a{
             color:white;
@@ -147,6 +147,7 @@
         }
     </style>
 </head>
+
 <body class="unselectable">
     <div class="topbox">
       <img src="__ALBUMART__" align="left" class="picture"/>
@@ -165,6 +166,8 @@
         __PLAYLIST_ITEMS__
     </ul>
 
+    <div id="playergap"></div>
+
     <div id="playerdiv">
         <p id="nowplaying">Now playing</p>
         <audio src="" controls id="audioPlayer">
@@ -175,32 +178,26 @@
         <a href="#" onclick="playlist.toggleShuffle();">Toggle Shuffle</a>
     </div>
 
-    <div id="playergap"></div>
-
     <script src="https://code.jquery.com/jquery-2.2.0.js"></script>
     <script src="__AUDIOPLAY_JS__"></script>
     <script>
-        
-        /*
-    Default constructor configuration:
+      /* 
+      Default constructor configuration:
         autoplay: false,
         shuffle: false,
         loop: false,
         playerId: "audioPlayer",
         playlistId: "playlist",
         currentClass: "current-song"
+      */
         
-        
-*/
-        
-        // loads the audio player
-        var config = {
-          autoplay: true, 
-            loop: true,
-            shuffle: true
-        };
-        var playlist = new AudioPlaylist();
-        
+      // loads the audio player
+      var config = {
+        autoplay: true, 
+        loop: true,
+        shuffle: true
+      };
+      var playlist = new AudioPlaylist();
     </script>
 </body>
 </html>
