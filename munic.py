@@ -61,10 +61,16 @@ class Handler(BaseHTTPRequestHandler):
         # If requesting a static file...
         elif name == "/audioPlayer.js":
             self.send_file(os.path.join(script_path, "audioPlayer.js"))
-        # If the url ends with a "/", treat it as a playlist request for that location 
-        elif name.endswith("/"):
-            # Requesting a directory, which we treat as requesting a playlist for that location
-            #   Queen/A Day At The Races/
+        # If the url ends with a "/" or "/*", treat it as a menu/playlist request for that location 
+        elif name.endswith("/") or name.endswith("/*"):
+            # If the request is for a directory, we treat it as requesting a list of subdirs (artists, albums etc.) in that location.
+            #   Queen/ --> gives a list of all Queen albums
+            # If the request is for the file "*", we treat it as a request for everything (all files and subdirs) in that location.
+            #   Queen/* --> gives a list of all Queen albums AND a playlist of all Queen songs.
+
+            include_songs = False
+            if name.endswith("/*"):
+                include_songs = True
 
             # The root location, relative to the requested location
             root = ""
@@ -78,7 +84,7 @@ class Handler(BaseHTTPRequestHandler):
             display_names = []
             dirs = base_dict["dirs"]
             # Remove empty parts which result from splitting empty strings etc.
-            parts = [ part for part in parts if part]
+            parts = [ part for part in parts if part and part != "*"]
             for part in parts:
                 # If that directory does not exist
                 if part not in dirs.keys():
@@ -113,8 +119,12 @@ class Handler(BaseHTTPRequestHandler):
             for h in range(0,3):
                 html = html.replace("__HEADING{}__".format(h), display_names[h])
 
-            # Build the playlist links section
+            # Build the playlist (subdir) links section
             playlist_links = ""
+            # If we are not showing the songs in the folder, the first link is always "All songs"
+            if not include_songs:
+                playlist_links = """<div class="speciallink"><p><a href="*">All Songs</a></p></div>"""
+
             if dirs:
                 # Sort the keys (dir names) alphabetically
                 # Note that we are sorting by "simplified name", so "The Beatles" is in with the Bs, not the Ts.
@@ -122,8 +132,8 @@ class Handler(BaseHTTPRequestHandler):
                 dir_names.sort()
                 for dir_name in dir_names:
                     display_name = dirs[dir_name]["display_name"]
-                    link = dir_name + "/"
-                    playlist_link = """<div><p><a href="__LINK__">__NAME__</a></p></div>""".replace("__LINK__", link).replace("__NAME__", display_name)
+                    link = dir_name + "/*"  # Include '*' to take us to the playlist
+                    playlist_link = """<div class="playlistlink"><p><a href="__LINK__">__NAME__</a></p></div>""".replace("__LINK__", link).replace("__NAME__", display_name)
                     playlist_links = playlist_links + playlist_link
 
             # Drop the links into the html document
@@ -132,13 +142,14 @@ class Handler(BaseHTTPRequestHandler):
             # Build the playlist contents.  
             playlist_items = ""
 
-            # Get all media files at or below this location
-            media_items = get_all_songs(base_dict)
+            if include_songs:
+                # Get all media files at or below this location
+                media_items = get_all_songs(base_dict)
 
-            # Construct the list items
-            for (song_display_name, song_constructed_filepath) in media_items:
-                playlist_item = """<li><a href="__SONG_FILENAME__">__SONG_NAME__</a></li>\n""".replace("__SONG_FILENAME__", song_constructed_filepath).replace("__SONG_NAME__", song_display_name)
-                playlist_items = playlist_items + playlist_item
+                # Construct the list items
+                for (song_display_name, song_constructed_filepath) in media_items:
+                    playlist_item = """<li><a href="__SONG_FILENAME__">__SONG_NAME__</a></li>\n""".replace("__SONG_FILENAME__", song_constructed_filepath).replace("__SONG_NAME__", song_display_name)
+                    playlist_items = playlist_items + playlist_item
 
             # Drop the playlist content into the html template
             html = html.replace("__PLAYLIST_ITEMS__", playlist_items)
