@@ -61,6 +61,8 @@ class Handler(BaseHTTPRequestHandler):
         # If requesting a static file...
         elif name == "/audioPlayer.js":
             self.send_file(os.path.join(script_path, "audioPlayer.js"))
+        elif name.endswith("/favicon.png"):
+            self.send_file(os.path.join(script_path, "favicon.png"))
         # If the url ends with a "/" or "/*", treat it as a menu/playlist request for that location 
         elif name.endswith("/") or name.endswith("/*"):
             # If the request is for a directory, we treat it as requesting a list of subdirs (artists, albums etc.) in that location.
@@ -103,6 +105,9 @@ class Handler(BaseHTTPRequestHandler):
 
             # Construct the page. This will be all the directories directly under this one, as links,
             # and all the files from this directory onwards, as a playlist.
+
+            # Drop in the root location
+            html = html.replace("__ROOT__", root)
 
             # Drop in the audioplayer javascript file
             html = html.replace("__AUDIOPLAY_JS__", root + "audioPlayer.js") 
@@ -288,6 +293,7 @@ class Handler(BaseHTTPRequestHandler):
 
             self.send_header("Accept-Ranges", 'bytes')
             self.send_header("Content-Length", content_length)
+            self.send_header("Cache-Control", "max-age=1000")
             if mime_type:
                 self.send_header("Content-Type", mime_type)
             self.end_headers()
