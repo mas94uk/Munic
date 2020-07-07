@@ -61,7 +61,7 @@ class Handler(BaseHTTPRequestHandler):
         # If requesting a static file...
         elif name == "/audioPlayer.js":
             self.send_file(os.path.join(script_path, "audioPlayer.js"))
-        elif name.endswith("/favicon.png"):
+        elif name == "/favicon.png":
             self.send_file(os.path.join(script_path, "favicon.png"))
         # If the url ends with a "/" or "/*", treat it as a menu/playlist request for that location 
         elif name.endswith("/") or name.endswith("/*"):
