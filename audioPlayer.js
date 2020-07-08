@@ -37,9 +37,6 @@ class AudioPlaylist{
         $("."+this.currentClass).removeClass(this.currentClass);
         $("#"+this.playlistId+ " li").eq(liPos).addClass(this.currentClass);
         this.trackPos = arrayPos; // update based on array index position
-        var nowPlaying = $("#"+this.playlistId+ " li a").eq(liPos)[0].text;
-        this.title.innerHTML = nowPlaying;
-        this.nowPlaying.innerHTML = nowPlaying;
     }
     prevTrack(){
         if(this.trackPos == 0)
@@ -50,14 +47,27 @@ class AudioPlaylist{
     }
     nextTrack(){
         // if track isn't the last track in array of tracks, go to next track
-        if(this.trackPos < this.length - 1)
+        if(this.trackPos < this.length - 1) {
             this.setTrack(this.trackPos+1);
-        else{
+            this.player.play();
+        } else {
+            // We have reached the end.
+            // Reshuffle for next time
             if(this.shuffle)
                 this.randomizeOrder();
+
+            // Start back at the start, but do not play
             this.setTrack(0);
+
+            // Reset the original title
+            this.title.innerHTML = this.orignalTitleText;
+            this.nowPlaying.innerHTML = "-"
+
+            if(this.loop)
+            {
+                this.player.play();
+            }
         }
-        this.player.play();
             
     }
     setLoop(val){
@@ -104,13 +114,7 @@ class AudioPlaylist{
         return this.loop;
     }
     constructor(config = {} ){
-        
-        /***
-        *
-        *       setting defaults, and initialzing player 
-        *
-        */
-        
+        // Set defaults and initialzing player 
         var classObj = this; // store scope for event listeners
         this.shuffle = (config.shuffle === true) ? true : false;
         this.playerId = (config.playerId) ? config.playerId : "audioPlayer";
@@ -123,9 +127,16 @@ class AudioPlaylist{
         this.trackPos = 0;
         this.trackOrder = [];
         this.title = $("#title")[0];
+        this.orignalTitleText = title.innerHTML;
         this.nowPlaying = document.getElementById("nowplaying");
         for(var i = 0; i < this.length; i++){
             this.trackOrder.push(i);
+        }
+
+        // Hide the audio player (and the gap left for it) if there are no tracks
+        if(this.length == 0) {
+            document.getElementById("playerdiv").style.display = "none";
+            document.getElementById("playergap").style.display = "none";
         }
         
         if(this.shuffle)
@@ -135,11 +146,7 @@ class AudioPlaylist{
         if(this.autoplay)
             this.player.play();
         
-         /***
-        *
-        *       handle link clicks
-        *
-        */
+        // Handle track link clicks
         $("#"+this.playlistId+" li a ").click(function(e){
             e.preventDefault();
             // set track based on index of 
@@ -147,11 +154,8 @@ class AudioPlaylist{
             classObj.player.play();
         });
         
-         /***
-        *
-        *       handle end of track
-        *
-        */
+        // Handle end of track
+        // TODO: This is just a duplicate of nextTrack() -- call it instead!
         this.player.addEventListener("ended", function(){
             // if last track ended
             if(classObj.trackPos < classObj.length - 1){
@@ -159,15 +163,36 @@ class AudioPlaylist{
                 classObj.player.play();
             }
             else{
-                if(classObj.loop){
-                    if(classObj.shuffle)
-                        classObj.randomizeOrder();
-                    classObj.setTrack(0);
+                // We have reached the end.
+                // Reshuffle for next time
+                if(classObj.shuffle)
+                    classObj.randomizeOrder();
+
+                // Start back at the start, but do not play
+                classObj.setTrack(0);
+
+                // Reset the original title
+                classObj.title.innerHTML = classObj.orignalTitleText;
+                classObj.nowPlaying.innerHTML = "-"
+
+                if(classObj.loop)
+                {
                     classObj.player.play();
                 }
             }
         });
-        
+
+        // Called when a track starts to play
+        this.player.addEventListener("play", function(){
+            // Set the title and now-playing.
+            // We do this here, rather than in setTrack(), so that it does not happen when the
+            // page loads and nothing is yet playing. 
+            var liPos = classObj.trackOrder[classObj.trackPos]; // convert array index to html index
+            var nowPlaying = $("#"+classObj.playlistId+ " li a").eq(liPos)[0].text;
+            classObj.title.innerHTML = nowPlaying;
+            classObj.nowPlaying.innerHTML = nowPlaying;
+        });
+
     }
 }
 

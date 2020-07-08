@@ -78,7 +78,9 @@ class Handler(BaseHTTPRequestHandler):
             root = ""
 
             # Get the requested path and navigate to it.
-            # As we go, build up "display_name" with the properly-formatted names of the directories
+            # As we go, build up "display_name" with the properly-formatted names of the directories.
+            # Also keep track of the most specific part of the name, for the title.
+            title = "Munic"
             requested_path = name.rstrip("/")
             logging.debug("Requested path: {}".format(requested_path))
             parts = requested_path.split("/")
@@ -96,7 +98,8 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 base_dict = dirs[part]
                 root += "../"
-                display_names.append(base_dict["display_name"]) 
+                display_names.append(base_dict["display_name"])
+                title = base_dict["display_name"]
                 dirs = base_dict["dirs"]
 
             # Read the playlist page template html from file
@@ -106,13 +109,16 @@ class Handler(BaseHTTPRequestHandler):
             # Construct the page. This will be all the directories directly under this one, as links,
             # and all the files from this directory onwards, as a playlist.
 
+            # Drop in the page title
+            html = html.replace("__TITLE__", title)
+
             # Drop in the root location
             html = html.replace("__ROOT__", root)
 
             # Drop in the audioplayer javascript file
             html = html.replace("__AUDIOPLAY_JS__", root + "audioPlayer.js") 
 
-            # Get the headings: the display names of the path, or "Munic" if none
+            # Get the headings: the display names of the path, or "Munic" if none.
             if not display_names:
                 display_names.append("Munic")
 

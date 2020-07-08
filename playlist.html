@@ -182,13 +182,14 @@
     <div id="playergap"></div>
 
     <div id="playerdiv">
-        <p id="nowplaying">Now playing</p>
+        <p id="nowplaying">-</p>
         <audio src="" controls id="audioPlayer">
             Sorry, your browser doesn't support html5!
         </audio>
         <a href="#" onclick="playlist.prevTrack();">Prev Track</a>
         <a href="#" onclick="playlist.nextTrack();">Next Track</a>
         <a href="#" onclick="playlist.toggleShuffle();">Toggle Shuffle</a>
+        <a href="#" onclick="playlist.toggleLoop();">Toggle Loop</a>
     </div>
 
     <script src="https://code.jquery.com/jquery-2.2.0.js"></script>
