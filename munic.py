@@ -124,6 +124,12 @@ class Handler(BaseHTTPRequestHandler):
             for h in range(0,3):
                 html = html.replace("__HEADING{}__".format(h), display_names[h])
 
+            # Generate some colours and drop them in
+            r = [ random.randint(1,3) for a in range (0,9) ]
+            colours = [ "#{}{}{}".format(r.pop(), r.pop(), r.pop()) for a in range(0,3) ]
+            for c in range(0,3):
+                html = html.replace("__COL{}__".format(c), colours[c])
+
             # Build the playlist (subdir) links section
             playlist_links = ""
             # If we are not showing the songs in the folder, the first link is always "All songs"
