@@ -350,28 +350,31 @@ def simplify(string):
 Returns an alphabetical list of tuples of (song display name, constructed filepath).
 "Constructed filepath" is the apparent filepath relative to the given dir-dict, e.g. "Queen/A Day At The Races/Drowse.mp3".
 (This includes the extension (e.g. .mp3) in case the browser requires it to play the file.)
-Song display names are prefixed with subdir names if they are in sub-directories."""
+Song display names are postfixed with subdir names if they are in sub-directories, e.g. "Tie Your Mother Down (Queen: A Day At The Races)"."""
 def get_all_songs(dir_dict, constructed_path: str = "", display_path: str = ""):
     media = dir_dict["media"]
     dirs = dir_dict["dirs"]
 
     results = []
-    # Get all media files in this directory
+    # Get all media files in this directory, sorted alphabetically
     for media_simplified_name in media.keys():
         media_filepath = media[media_simplified_name][1]
         extension = os.path.splitext(media_filepath)[1]
         constructed_filepath = constructed_path + media_simplified_name + extension 
-        media_display_name = display_path.replace("/", ": ") + media[media_simplified_name][0]
+        media_display_name = media[media_simplified_name][0]
+        
+        # If there is a path, add it on the end (suitably formatted)
+        formatted_display_path = display_path.rstrip("/").replace("/", ": ")
+        if formatted_display_path:
+            media_display_name += " ({})".format(formatted_display_path)
         results.append( (media_display_name, constructed_filepath) )
+        results.sort(key=lambda tup: tup[0].casefold())
 
     # Recurse into all sub-dirs, appending the directory name to the path
     for sub_dir in dirs.keys():
         sub_dir_dict = dirs[sub_dir]
         sub_dir_display_path = sub_dir_dict["display_name"]
         results = results + get_all_songs(sub_dir_dict, constructed_path + sub_dir + "/", display_path + sub_dir_display_path + "/")
-
-    # Sort alphabetially
-    results.sort(key=lambda tup: tup[0].casefold())
 
     return results
 
