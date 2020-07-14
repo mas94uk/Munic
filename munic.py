@@ -103,7 +103,7 @@ class Handler(BaseHTTPRequestHandler):
                 dirs = base_dict["dirs"]
 
             # Read the playlist page template html from file
-            with open("playlist.html") as html_file:
+            with open(os.path.join(script_path, "playlist.html")) as html_file:
                 html = html_file.read()
 
             # Construct the page. This will be all the directories directly under this one, as links,
@@ -259,17 +259,17 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(encoded)
 
     """Send the specified file with status 200. and correct content-type and content-length."""
-    def send_file(self, localpath, range_start:int = None, range_end:int = None):
-        logging.info("Sending file {}".format(localpath))
-        media_gets[threading.get_ident()] = localpath
+    def send_file(self, filepath, range_start:int = None, range_end:int = None):
+        logging.info("Sending file {}".format(filepath))
+        media_gets[threading.get_ident()] = filepath
 
         # Was a range requested?
         range_requested = True if range_start is not None or range_end is not None else False
 
         # Get the mime type of the file
-        mime_type, encoding = mimetypes.guess_type(localpath)
+        mime_type, encoding = mimetypes.guess_type(filepath)
 
-        with open(localpath, 'rb') as f:
+        with open(filepath, 'rb') as f:
             # If the file is not seekable, end the whole thing.
             # (We could read and discard if this is a problem, but it is not expected to happen.)
             if range_requested and not f.seekable():
@@ -324,11 +324,11 @@ class Handler(BaseHTTPRequestHandler):
                     content_length -= length_read
                     total_sent += length_read
 
-                logging.info("Successfully sent file {}".format(localpath))
+                logging.info("Successfully sent file {}".format(filepath))
             except BrokenPipeError:
-                logging.warn("Broken pipe error sending {} after {} bytes".format(localpath, total_sent))
+                logging.warn("Broken pipe error sending {} after {} bytes".format(filepath, total_sent))
             except ConnectionResetError:
-                logging.warn("Connetion reset by peer sending {} after {} bytes".format(localpath, total_sent))
+                logging.warn("Connetion reset by peer sending {} after {} bytes".format(filepath, total_sent))
         logging.info("File send finished on thread {}".format(threading.get_ident()))
         media_gets.pop(threading.get_ident())
         logging.debug("Ongoing transfers: " + str(media_gets)) 
