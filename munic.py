@@ -370,8 +370,10 @@ def get_all_songs(dir_dict, constructed_path: str = "", display_path: str = ""):
         results.append( (media_display_name, constructed_filepath) )
         results.sort(key=lambda tup: tup[0].casefold())
 
-    # Recurse into all sub-dirs, appending the directory name to the path
-    for sub_dir in dirs.keys():
+    # Recurse into all sub-dirs (in alphabetical order), appending the directory name to the path
+    sub_dirs = [sd for sd in dirs.keys()]
+    sub_dirs.sort()
+    for sub_dir in sub_dirs:
         sub_dir_dict = dirs[sub_dir]
         sub_dir_display_path = sub_dir_dict["display_name"]
         results = results + get_all_songs(sub_dir_dict, constructed_path + sub_dir + "/", display_path + sub_dir_display_path + "/")
