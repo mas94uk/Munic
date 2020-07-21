@@ -9,6 +9,7 @@ from urllib import parse as urllibparse
 import sys
 import os
 import unicodedata
+import math
 import mimetypes
 import logging
 import re
@@ -311,7 +312,7 @@ class Handler(BaseHTTPRequestHandler):
                         found = True
                     # Otherwise if the requested format is a supported type, transcode and send 
                     elif MAX_SIMULTANEOUS_TRANSCODES and requested_extension in (".ogg", ".mp3"):
-                        self.send_transcoded_file(name, filepath, requested_extension)
+                        self.send_transcoded_file(name, filepath, requested_extension, range_start, range_end)
                         found = True
             
             if not found:
@@ -413,7 +414,7 @@ class Handler(BaseHTTPRequestHandler):
         logging.debug("Ongoing transfers: " + str(media_gets)) 
 
     """ Send the given file, transcoded to the specified format"""
-    def send_transcoded_file(self, requested_filepath, source_filepath, requested_extension):
+    def send_transcoded_file(self, requested_filepath, source_filepath, requested_extension, range_start:int = None, range_end:int = None):
         logging.info("Sending transcoded file {} -> {}".format(source_filepath, requested_filepath))
         # TODO Add range support for transcoded files
 
@@ -462,44 +463,92 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers
             return
 
-        self.send_response(200)
-        self.send_header("Accept-Ranges", 'bytes')
-        self.send_header("Cache-Control", "max-age=1000")
-        if mime_type:
-            self.send_header("Content-Type", "audio/ogg")
-        self.send_header("Transfer-Encoding", "chunked")
-        self.end_headers()
+        # Was a range requested?
+        range_requested = True if range_start is not None or range_end is not None else False
 
-        total_sent = 0
-        CHUNK_SIZE = 65536  # 64kB at a time
-        time.sleep(1)
-        try:
-            with open(transcoded_filepath, 'rb') as f:
-                # While we are still transcoding, send 16kB at a time
-                while True:
-                    file_length = os.fstat(f.fileno())[6]
-                    if file_length >= total_sent + CHUNK_SIZE:
-                        data = f.read(CHUNK_SIZE)
+        with open(transcoded_filepath, 'rb') as f:
+            if range_requested and not f.seekable():
+                logging.warn("File not seekable: not sending range")
+                range_requested = False
+                range_start = None
+                range_end = None
+
+            # If a range start was specified, wait until the file is large enough
+            reply_range_start = 0
+            if range_start is not None:
+                reply_range_start = range_start
+                while os.fstat(f.fileno())[6] < range_start and not transcoder.transcode_finished():
+                    time.sleep(0.1)
+                if os.fstat(f.fileno())[6] < range_start:
+                    # Range Not Satisfiable
+                    self.send_response(416)
+                    self.end_headers()
+                    return
+
+            # We the range end was specified AND we know the file size
+            reply_range_end = ""    # By default, not specified
+            reply_file_length = "*" # By default, not specified
+            if range_end is not None and transcoder.transcode_finished():
+                # If the file is too small
+                if range_end >= os.fstat(f.fileno())[6]:
+                    # Range Not Satisfiable
+                    self.send_response(416)
+                    self.end_headers()
+                    return
+
+                reply_range_end = os.fstat(f.fileno())[6] -1
+                reply_file_length = os.fstat(f.fileno())[6]
+
+            if range_requested:
+                self.send_response(206) # Partial content
+                self.send_header("Content-Range", "bytes {}-{}/{}".format(reply_range_start, reply_range_end, reply_file_length))
+            else:
+                self.send_response(200)
+
+            self.send_header("Accept-Ranges", 'bytes')
+            self.send_header("Cache-Control", "max-age=1000")
+            if mime_type:
+                self.send_header("Content-Type", "audio/ogg")
+            self.send_header("Transfer-Encoding", "chunked")
+            self.end_headers()
+
+            total_sent = 0
+            CHUNK_SIZE = 65536  # 64kB at a time
+            time.sleep(1)
+            try:
+                if range_start is None:
+                    range_start = 0
+                if range_end:
+                    left_to_send = range_end - range_start + 1
+                else:
+                    left_to_send = math.inf
+
+                # Seek to the desired start (lazily just asusming it worked)
+                f.seek(range_start)
+
+                # While we are still transcoding, send a chunk at a time
+                while not transcoder.transcode_finished() and left_to_send > 0:
+                    file_length_remaining = os.fstat(f.fileno())[6] - f.tell()
+                    if file_length_remaining >= CHUNK_SIZE:
+                        length_to_read = min(CHUNK_SIZE, left_to_send)
+                        data = f.read(length_to_read)
                         length_read = len(data)
                         chunk_size_string = "%x\r\n" % length_read
                         self.wfile.write(chunk_size_string.encode("utf-8"))
                         self.wfile.write(data)
                         self.wfile.write("\r\n".encode("utf-8"))
                         total_sent += length_read
+                        left_to_send -= length_read
                     else:
                         time.sleep(0.1)
 
-                    # If the transcoding has finished...
-                    if transcoder.transcode_finished():
-                        # ...exit the loop
-                        break
-
                 # Send the rest
-                logging.info("Transcoding complete; sending the rest")
+                logging.info("Finished waiting for transcode with {} bytes remaining".format(left_to_send))
                 file_length = os.fstat(f.fileno())[6]
-                while total_sent < file_length:
-                    remaining = file_length - total_sent
-                    length_to_read = min(CHUNK_SIZE, remaining)
+                # While there is file remaining
+                while os.fstat(f.fileno())[6] - f.tell() > 0 and left_to_send > 0:
+                    file_remaining = os.fstat(f.fileno())[6] - f.tell()
+                    length_to_read = min(CHUNK_SIZE, file_remaining, left_to_send)
                     data = f.read(length_to_read)
                     length_read = len(data)
                     chunk_size_string = "%x\r\n" % length_read
@@ -507,15 +556,16 @@ class Handler(BaseHTTPRequestHandler):
                     self.wfile.write(data)
                     self.wfile.write("\r\n".encode("utf-8"))
                     total_sent += length_read
+                    left_to_send -= length_read
 
                 # Send an empty chunk to indicate the end of file
                 self.wfile.write("0\r\n\r\n".encode("utf-8"))
 
                 logging.info("Successfully sent transcoded file ({} bytes)".format(total_sent))
-        except BrokenPipeError:
-            logging.warn("Broken pipe error sending {} after {} bytes".format(requested_filepath, total_sent))
-        except ConnectionResetError:
-            logging.warn("Connetion reset by peer sending {} after {} bytes".format(requested_filepath, total_sent))
+            except BrokenPipeError:
+                logging.warn("Broken pipe error sending {} after {} bytes".format(requested_filepath, total_sent))
+            except ConnectionResetError:
+                logging.warn("Connetion reset by peer sending {} after {} bytes".format(requested_filepath, total_sent))
 
 class ThreadingSimpleServer(ThreadingMixIn, HTTPServer):
     pass
