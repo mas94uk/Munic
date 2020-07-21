@@ -13,10 +13,18 @@ import mimetypes
 import logging
 import re
 import random
+import subprocess
+import time
 import code # For code.interact()
 
 # Whether to use HTTPS
 USE_HTTPS = False
+
+# Maximum number of simultaneous transcodes to allow (or 0 to not allow transcoding)
+MAX_SIMULTANEOUS_TRANSCODES = 2
+
+# Maximum number of completed transcodes to preserve
+MAX_COMPLETED_TRANSCODES = 20
 
 # Data structure containing the media library 
 library = None
@@ -27,13 +35,71 @@ script_path = None
 # Ongoing media GETs - for debug
 media_gets = {}
 
-# TODO: Transcoding
-# 1. Can we send data slowly (with existing code or other)? Test, implement if possible.
-# 2. Can we start playing a song before the whole thing is received? Test.
-# 3. Put more sources in audio player: default + two others, named with id="..."
-# 4. Python to offer multiple sources: the native format first and two alternatives (ogg and mp3)
-# 5. Javascript to retrieve and set all three; player should auto choose the first it can play
-# 6. Python to transcode on the fly if non-native format requested. Make sure it is killed if connection drops!
+# Start with an empty list of transcode jobs
+transcoders = []
+
+class Transcoder:
+    # Index for the next transcode temp file
+    nextIndex = 0
+
+    """ Constructor """
+    def __init__(self, requested_filepath, source_filepath, target_extension):
+        self.finished = False
+        self.requested_filepath = requested_filepath
+
+        out_file = "TRANSCODE_{}{}".format(Transcoder.nextIndex, target_extension)
+        Transcoder.nextIndex += 1
+
+        logging.info("Creating transcode session for {} -> {} (Temp file: {})".format(source_filepath, target_extension, out_file))
+
+        # TODO use a proper temp directory
+        self.out_file = os.path.join(script_path, out_file)
+
+        # Delete the file if it exists (probably left over from a previous session)
+        if os.path.exists(self.out_file):
+            os.remove(self.out_file)
+
+        # Start the transcode
+        self.transcode_process = subprocess.Popen(["ffmpeg", "-i", source_filepath, self.out_file],
+                                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    """ Destructor """
+    def __del__(self):
+        # Stop the active transcode
+        if not self.transcode_finished():
+            self.transcode_process.kill()
+
+        # Remove the output file from disk
+        if os.path.exists(self.out_file):
+            os.remove(self.out_file)
+
+    """ Has the transcoding completed? """
+    def transcode_finished(self):
+        if self.finished:
+            return True
+        if self.transcode_process.poll() is not None:
+            self.finished = True
+            self.transcode_process = None
+
+        return self.finished
+
+    """ Returns the name of the transcoded file.  Waits for it to be created if it does not already exist. """
+    def get_transcoded_filepath(self):
+        # If we have finished transcoding, the file should have been created already 
+        if self.transcode_finished():
+            if os.path.exists(self.out_file):
+                return self.out_file
+            else:
+                logging.warning("Transcode finished but destination file not created")
+                return None
+
+        # If we are still transcoding, wait up to 2s for the file to appear
+        for i in range(0,20):
+            if os.path.exists(self.out_file):
+                return self.out_file
+            time.sleep(0.1)
+
+        return None
 
 class Handler(BaseHTTPRequestHandler):
 
@@ -223,23 +289,36 @@ class Handler(BaseHTTPRequestHandler):
 
             # Remove the extension from the constructed filename to give the display name
             constructed_filename = parts[-1]
-            basename = os.path.splitext(constructed_filename)[0]
+            basename, requested_extension = os.path.splitext(constructed_filename)
+
+            found = False
 
             # If the requested file is the graphic in this directory
             if constructed_filename == base_dict["graphic"]:
                 filepath = base_dict["path"] + base_dict["graphic"]
+                self.send_file(filepath, range_start, range_end)
+                found = True
             else:
                 # Find the song in the dictionary (display name is key) and get its real filepath (the value)
                 media = base_dict["media"]
-                if basename not in media.keys():
-                    logging.warning("File {} not found in library".format(basename))
-                    self.send_response(404)
-                    self.end_headers()
-                    return
-                filepath = media[basename][1]
+                if basename in media.keys():
+                    filepath = media[basename][1]
 
-            logging.debug("Sending {}".format(filepath))
-            self.send_file(filepath, range_start, range_end)
+                    # If the file is already in the requested format, just send it
+                    actual_extension = os.path.splitext(filepath)[1]
+                    if (actual_extension == requested_extension):
+                        self.send_file(filepath, range_start, range_end)
+                        found = True
+                    # Otherwise if the requested format is a supported type, transcode and send 
+                    elif MAX_SIMULTANEOUS_TRANSCODES and requested_extension in (".ogg", ".mp3"):
+                        self.send_transcoded_file(name, filepath, requested_extension)
+                        found = True
+            
+            if not found:
+                logging.warning("File {}{}) not found in library".format(basename, requested_extension))
+                self.send_response(404)
+                self.end_headers()
+                return
 
         logging.info("GET completed")
 
@@ -333,6 +412,103 @@ class Handler(BaseHTTPRequestHandler):
         media_gets.pop(threading.get_ident())
         logging.debug("Ongoing transfers: " + str(media_gets)) 
 
+    """ Send the given file, transcoded to the specified format"""
+    def send_transcoded_file(self, requested_filepath, source_filepath, requested_extension):
+        logging.info("Sending transcoded file {} -> {}".format(source_filepath, requested_filepath))
+
+        # Get the existing transcoder if it exists
+        transcoder = None
+        for t in transcoders:
+            if t.requested_filepath == requested_filepath:
+                transcoder = t
+
+                # 'Refresh' this transcoder by moving it to the end of the list
+                transcoders.remove(t)
+                transcoders.append(t)
+                break
+
+        # Else create a new one and store it
+        if not transcoder:
+            transcoder = Transcoder(requested_filepath, source_filepath, requested_extension)
+            transcoders.append(transcoder)
+
+        # Housekeep existing transcoders:
+        # Get a list of still-in-progress transcoders
+        running = [t for t in transcoders if not t.transcode_finished()]
+        # Remove the oldest running transcoders
+        while len(running) > MAX_SIMULTANEOUS_TRANSCODES:
+            logging.info("Removing one running transcoder")
+            t = running.pop(0)
+            transcoders.remove(t)
+
+        # Get a list of completed transcodes
+        completed = [t for t in transcoders if t.transcode_finished()]
+        # Remove the oldest completed transcodes
+        while len(transcoders) > MAX_COMPLETED_TRANSCODES:
+            logging.info("Removing one completed transcode")
+            t = completed.pop(0)
+            transcoders.remove(t)
+
+        # Get the mime type of the transcoded file
+        mime_type, encoding = mimetypes.guess_type(requested_filepath)
+
+        self.send_response(200)
+        self.send_header("Accept-Ranges", 'bytes')
+        self.send_header("Cache-Control", "max-age=1000")
+        if mime_type:
+            self.send_header("Content-Type", "audio/ogg")
+        self.send_header("Transfer-Encoding", "chunked")
+        self.end_headers()
+
+        # Get the name of the transcoded file (also waits for it to be created)
+        transcoded_filepath = transcoder.get_transcoded_filepath()
+
+        total_sent = 0
+        BLOCK_SIZE = 16384
+        time.sleep(1)
+        try:
+            with open(transcoded_filepath, 'rb') as f:
+                # While we are still transcoding, send 16kB at a time
+                while True:
+                    file_length = os.fstat(f.fileno())[6]
+                    if file_length >= total_sent + BLOCK_SIZE:
+                        data = f.read(BLOCK_SIZE)
+                        length_read = len(data)
+                        chunk_size_string = "%x\r\n" % length_read
+                        self.wfile.write(chunk_size_string.encode("utf-8"))
+                        self.wfile.write(data)
+                        self.wfile.write("\r\n".encode("utf-8"))
+                        total_sent += length_read
+                    else:
+                        time.sleep(0.1)
+
+                    # If the transcoding has finished...
+                    if transcoder.transcode_finished():
+                        # ...exit the loop
+                        break
+
+                # Send the rest
+                logging.info("Transcoding complete; sending the rest")
+                file_length = os.fstat(f.fileno())[6]
+                while total_sent < file_length:
+                    remaining = file_length - total_sent
+                    length_to_read = min(BLOCK_SIZE, remaining)
+                    data = f.read(length_to_read)
+                    length_read = len(data)
+                    chunk_size_string = "%x\r\n" % length_read
+                    self.wfile.write(chunk_size_string.encode("utf-8"))
+                    self.wfile.write(data)
+                    self.wfile.write("\r\n".encode("utf-8"))
+                    total_sent += length_read
+
+                # Send an empty chunk to indicate the end of file
+                self.wfile.write("0\r\n\r\n".encode("utf-8"))
+
+                logging.info("Successfully sent transcoded file ({} bytes)".format(total_sent))
+        except BrokenPipeError:
+            logging.warn("Broken pipe error sending {} after {} bytes".format(requested_filepath, total_sent))
+        except ConnectionResetError:
+            logging.warn("Connetion reset by peer sending {} after {} bytes".format(requested_filepath, total_sent))
 
 class ThreadingSimpleServer(ThreadingMixIn, HTTPServer):
     pass
@@ -484,6 +660,8 @@ if __name__ == '__main__':
 
     # Get the source directory
     script_path = os.path.dirname(os.path.realpath(__file__))
+
+    # TODO Delete any old transcode outputs
 
     # Load the library of songs to serve
     library = load_library(sys.argv[1:])
