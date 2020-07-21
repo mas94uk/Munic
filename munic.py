@@ -93,8 +93,8 @@ class Transcoder:
                 logging.warning("Transcode finished but destination file not created")
                 return None
 
-        # If we are still transcoding, wait up to 2s for the file to appear
-        for i in range(0,20):
+        # If we are still transcoding, wait up to 5s for the file to appear
+        for i in range(0,50):
             if os.path.exists(self.out_file):
                 return self.out_file
             time.sleep(0.1)
@@ -415,6 +415,7 @@ class Handler(BaseHTTPRequestHandler):
     """ Send the given file, transcoded to the specified format"""
     def send_transcoded_file(self, requested_filepath, source_filepath, requested_extension):
         logging.info("Sending transcoded file {} -> {}".format(source_filepath, requested_filepath))
+        # TODO Add range support for transcoded files
 
         # Get the existing transcoder if it exists
         transcoder = None
@@ -452,6 +453,15 @@ class Handler(BaseHTTPRequestHandler):
         # Get the mime type of the transcoded file
         mime_type, encoding = mimetypes.guess_type(requested_filepath)
 
+        # Get the name of the transcoded file (also waits for it to be created)
+        transcoded_filepath = transcoder.get_transcoded_filepath()
+
+        # If the file was not created, send a 404.  Note that it could just be very slow.
+        if not transcoded_filepath:
+            self.send_response(404)
+            self.end_headers
+            return
+
         self.send_response(200)
         self.send_header("Accept-Ranges", 'bytes')
         self.send_header("Cache-Control", "max-age=1000")
@@ -460,19 +470,16 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Transfer-Encoding", "chunked")
         self.end_headers()
 
-        # Get the name of the transcoded file (also waits for it to be created)
-        transcoded_filepath = transcoder.get_transcoded_filepath()
-
         total_sent = 0
-        BLOCK_SIZE = 16384
+        CHUNK_SIZE = 65536  # 64kB at a time
         time.sleep(1)
         try:
             with open(transcoded_filepath, 'rb') as f:
                 # While we are still transcoding, send 16kB at a time
                 while True:
                     file_length = os.fstat(f.fileno())[6]
-                    if file_length >= total_sent + BLOCK_SIZE:
-                        data = f.read(BLOCK_SIZE)
+                    if file_length >= total_sent + CHUNK_SIZE:
+                        data = f.read(CHUNK_SIZE)
                         length_read = len(data)
                         chunk_size_string = "%x\r\n" % length_read
                         self.wfile.write(chunk_size_string.encode("utf-8"))
@@ -492,7 +499,7 @@ class Handler(BaseHTTPRequestHandler):
                 file_length = os.fstat(f.fileno())[6]
                 while total_sent < file_length:
                     remaining = file_length - total_sent
-                    length_to_read = min(BLOCK_SIZE, remaining)
+                    length_to_read = min(CHUNK_SIZE, remaining)
                     data = f.read(length_to_read)
                     length_read = len(data)
                     chunk_size_string = "%x\r\n" % length_read
