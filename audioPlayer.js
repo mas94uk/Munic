@@ -33,7 +33,36 @@ class AudioPlaylist{
     }
     setTrack(arrayPos){
         var liPos = this.trackOrder[arrayPos]; // convert array index to html index
-        this.player.src = $("#"+this.playlistId+ " li a").eq(liPos).attr("href");
+        var original_url = $("#"+this.playlistId+ " li a").eq(liPos).attr("href");
+
+        // Generate a list of sources: the original, and transcoded alternatives
+        // TODO: Only offer alternate formats if the back end offers transcoding.
+        var source_template = '<source src="__FILE__" type="audio/__MIMETYPE__">'
+        var parts = original_url.split(".") // get the stem and extension
+        var sources = ""
+        if(parts.length == 2) {
+            var stem = parts[0]
+            var original_format = parts[1]
+            // Put the original format first, except if it is FLAC (because the bandwidth use is too high)
+            if(original_format != "flac") {
+                sources = sources + source_template.replace("__FILE__", original_url).replace("__MIMETYPE__", this.mimeType(original_format));
+            }
+            // Offer ogg transcode (if the original was not ogg)
+            if(original_format != "ogg") {
+                sources = sources + source_template.replace("__FILE__", stem + ".ogg").replace("__MIMETYPE__", "ogg");
+            }
+            // Offer mp3 transcode (if the original was not mp3)
+            if(original_format != "mp3") {
+                sources = sources + source_template.replace("__FILE__", stem + ".mp3").replace("__MIMETYPE__", "mpeg");
+            }
+            // Put FLAC last, but only if that is the original format -- never offer to transcode to flac
+            if(original_format == "flac") {
+                sources = sources + source_template.replace("__FILE__", original_url).replace("__MIMETYPE__", "flac");
+            }
+        }
+        this.player.innerHTML = sources;
+        this.player.load();
+
         $("."+this.currentClass).removeClass(this.currentClass);
         $("#"+this.playlistId+ " li").eq(liPos).addClass(this.currentClass);
         this.trackPos = arrayPos; // update based on array index position
@@ -113,6 +142,11 @@ class AudioPlaylist{
             this.setLoop(true);
         return this.loop;
     }
+    mimeType(extension){
+        if(extension=="mp3") return "mpeg";
+        // All the others (m4a, ogg, wav, flac, wma) happen to be the same as the file extension
+        return extension;
+    } 
     constructor(config = {} ){
         // Set defaults and initialzing player 
         var classObj = this; // store scope for event listeners
@@ -155,31 +189,8 @@ class AudioPlaylist{
         });
         
         // Handle end of track
-        // TODO: This is just a duplicate of nextTrack() -- call it instead!
         this.player.addEventListener("ended", function(){
-            // if last track ended
-            if(classObj.trackPos < classObj.length - 1){
-                classObj.setTrack(classObj.trackPos+1);
-                classObj.player.play();
-            }
-            else{
-                // We have reached the end.
-                // Reshuffle for next time
-                if(classObj.shuffle)
-                    classObj.randomizeOrder();
-
-                // Start back at the start, but do not play
-                classObj.setTrack(0);
-
-                // Reset the original title
-                classObj.title.innerHTML = classObj.orignalTitleText;
-                classObj.nowPlaying.innerHTML = "-"
-
-                if(classObj.loop)
-                {
-                    classObj.player.play();
-                }
-            }
+            classObj.nextTrack();
         });
 
         // Called when a track starts to play
