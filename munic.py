@@ -22,7 +22,7 @@ import code # For code.interact()
 USE_HTTPS = False
 
 # Maximum number of simultaneous transcodes to allow (or 0 to not allow transcoding)
-MAX_SIMULTANEOUS_TRANSCODES = 2
+MAX_SIMULTANEOUS_TRANSCODES = 1
 
 # Maximum number of completed transcodes to preserve
 MAX_COMPLETED_TRANSCODES = 20
@@ -61,14 +61,18 @@ class Transcoder:
             os.remove(self.out_file)
 
         # Start the transcode
-        self.transcode_process = subprocess.Popen(["ffmpeg", "-i", source_filepath, self.out_file],
+        # The "-flush_packets 1" argument causes the output to be written to the file more quickly, rather than being buffered.
+        # This helps avoid glitches at the start of playback if running on slow hardware (e.g. raspberry pi zero).
+        self.transcode_process = subprocess.Popen(["ffmpeg", "-i", source_filepath, "-flush_packets", "1", self.out_file],
                                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     """ Destructor """
     def __del__(self):
+        logging.info("Destructing transcode job for {}".format(self.out_file))
+
         # Stop the active transcode
         if not self.transcode_finished():
-            self.transcode_process.kill()
+            self.transcode_process.terminate()
 
         # Remove the output file from disk
         if os.path.exists(self.out_file):
@@ -416,7 +420,6 @@ class Handler(BaseHTTPRequestHandler):
     """ Send the given file, transcoded to the specified format"""
     def send_transcoded_file(self, requested_filepath, source_filepath, requested_extension, range_start:int = None, range_end:int = None):
         logging.info("Sending transcoded file {} -> {}".format(source_filepath, requested_filepath))
-        # TODO Add range support for transcoded files
 
         # Get the existing transcoder if it exists
         transcoder = None
@@ -442,14 +445,16 @@ class Handler(BaseHTTPRequestHandler):
             logging.info("Removing one running transcoder")
             t = running.pop(0)
             transcoders.remove(t)
+            t = None
 
         # Get a list of completed transcodes
         completed = [t for t in transcoders if t.transcode_finished()]
         # Remove the oldest completed transcodes
-        while len(transcoders) > MAX_COMPLETED_TRANSCODES:
+        while len(completed) > MAX_COMPLETED_TRANSCODES:
             logging.info("Removing one completed transcode")
             t = completed.pop(0)
             transcoders.remove(t)
+            t = None
 
         # Get the mime type of the transcoded file
         mime_type, encoding = mimetypes.guess_type(requested_filepath)
@@ -665,7 +670,7 @@ def load_library(media_dirs):
         logging.info("Scanning media dir {}".format(media_dir))
         for path, dirs, files in os.walk(media_dir):
             # We are only interested in files with music extensions
-            music_files = [file for file in files if file.lower().endswith((".mp3", ".m4a", ".ogg", ".wav", ".flac", ".wma")) ]
+            music_files = [file for file in files if file.lower().endswith((".mp3", ".mp4", ".m4a", ".ogg", ".wav", ".flac", ".wma")) ]
 
             graphic_files = [file for file in files if file.lower().endswith((".jpg", ".jpeg", ".gif", ".bmp", ".png"))]
 
