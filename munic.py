@@ -12,6 +12,7 @@ import unicodedata
 import math
 import mimetypes
 import logging
+import pathlib
 import re
 import random
 import subprocess
@@ -43,6 +44,16 @@ class Transcoder:
     # Index for the next transcode temp file
     nextIndex = 0
 
+    # TODO use a proper temp directory
+    TRANSCODE_DIR = os.path.dirname(os.path.realpath(__file__))
+
+    """ Clean up leftover transcodes """
+    def CleanUp():
+        logging.info("Cleaning up old transcoded files")
+        for old_transcode in pathlib.Path(Transcoder.TRANSCODE_DIR).glob("TRANSCODE_*.*"):
+            logging.debug("Removing old transcode output {}".format(old_transcode))
+            os.remove(os.path.join(Transcoder.TRANSCODE_DIR, old_transcode))
+
     """ Constructor """
     def __init__(self, requested_filepath, source_filepath, target_extension):
         self.finished = False
@@ -53,8 +64,7 @@ class Transcoder:
 
         logging.info("Creating transcode session for {} -> {} (Temp file: {})".format(source_filepath, target_extension, out_file))
 
-        # TODO use a proper temp directory
-        self.out_file = os.path.join(script_path, out_file)
+        self.out_file = os.path.join(Transcoder.TRANSCODE_DIR, out_file)
 
         # Delete the file if it exists (probably left over from a previous session)
         if os.path.exists(self.out_file):
@@ -68,7 +78,7 @@ class Transcoder:
 
     """ Destructor """
     def __del__(self):
-        logging.info("Destructing transcode job for {}".format(self.out_file))
+        logging.info("Destructing transcode job for {} -> {}".format(self.requested_filepath, self.out_file))
 
         # Stop the active transcode
         if not self.transcode_finished():
@@ -317,6 +327,7 @@ class Handler(BaseHTTPRequestHandler):
                     # Otherwise if the requested format is a supported type, transcode and send 
                     elif MAX_SIMULTANEOUS_TRANSCODES and requested_extension in (".ogg", ".mp3"):
                         self.send_transcoded_file(name, filepath, requested_extension, range_start, range_end)
+                        self.prune_transcoders()
                         found = True
             
             if not found:
@@ -437,24 +448,8 @@ class Handler(BaseHTTPRequestHandler):
             transcoder = Transcoder(requested_filepath, source_filepath, requested_extension)
             transcoders.append(transcoder)
 
-        # Housekeep existing transcoders:
-        # Get a list of still-in-progress transcoders
-        running = [t for t in transcoders if not t.transcode_finished()]
-        # Remove the oldest running transcoders
-        while len(running) > MAX_SIMULTANEOUS_TRANSCODES:
-            logging.info("Removing one running transcoder")
-            t = running.pop(0)
-            transcoders.remove(t)
-            t = None
-
-        # Get a list of completed transcodes
-        completed = [t for t in transcoders if t.transcode_finished()]
-        # Remove the oldest completed transcodes
-        while len(completed) > MAX_COMPLETED_TRANSCODES:
-            logging.info("Removing one completed transcode")
-            t = completed.pop(0)
-            transcoders.remove(t)
-            t = None
+        # Housekeep existing transcoders after (possibly) adding one
+        self.prune_transcoders()
 
         # Get the mime type of the transcoded file
         mime_type, encoding = mimetypes.guess_type(requested_filepath)
@@ -572,6 +567,26 @@ class Handler(BaseHTTPRequestHandler):
             except ConnectionResetError:
                 logging.warn("Connetion reset by peer sending {} after {} bytes".format(requested_filepath, total_sent))
 
+    """ Prune the list of transcoders, removing the oldest if we have too may """
+    def prune_transcoders(self):
+        # Get a list of still-in-progress transcoders
+        running = [t for t in transcoders if not t.transcode_finished()]
+        # Remove the oldest running transcoders
+        while len(running) > MAX_SIMULTANEOUS_TRANSCODES:
+            logging.info("Removing one running transcoder")
+            t = running.pop(0)
+            transcoders.remove(t)
+            t = None
+
+        # Get a list of completed transcodes
+        completed = [t for t in transcoders if t.transcode_finished()]
+        # Remove the oldest completed transcodes
+        while len(completed) > MAX_COMPLETED_TRANSCODES:
+            logging.info("Removing one completed transcode")
+            t = completed.pop(0)
+            transcoders.remove(t)
+            t = None
+
 class ThreadingSimpleServer(ThreadingMixIn, HTTPServer):
     pass
 
@@ -659,6 +674,10 @@ def load_library(media_dirs):
     # This has the desirable side-effects of merging directories with effectively the same name, and de-duplicating any songs
     # with identical artist/album/name.
     # The location of the bottom level will be that of the script, so that the default graphic can be found.
+
+    known_music_formats = (".mp3", ".mp4", ".m4a", ".ogg", ".wav", ".flac", ".wma")
+    known_grapic_formats = (".jpg", ".jpeg", ".gif", ".bmp", ".png")
+
     library = { "display_name":None, "path":script_path +"/", "media":{}, "dirs":{}, "graphic":"munic.png" }
     # TODO Don't put empty stuff in, create ditionary entries when needed
     # TODO There's a bug here: if the same album exists in two locations, we merge them but only store one path.
@@ -666,13 +685,14 @@ def load_library(media_dirs):
     #      Probably revert to storing the whole filepath, for seamless merging. 
     num_songs = 0
     num_graphics = 0
+    unknown_extensions = []
     for media_dir in media_dirs:
         logging.info("Scanning media dir {}".format(media_dir))
         for path, dirs, files in os.walk(media_dir):
-            # We are only interested in files with music extensions
-            music_files = [file for file in files if file.lower().endswith((".mp3", ".mp4", ".m4a", ".ogg", ".wav", ".flac", ".wma")) ]
-
-            graphic_files = [file for file in files if file.lower().endswith((".jpg", ".jpeg", ".gif", ".bmp", ".png"))]
+            # Get files with music extensions, graphic extensions and unknown extensions
+            music_files = [file for file in files if file.lower().endswith(known_music_formats) ]
+            graphic_files = [file for file in files if file.lower().endswith(known_grapic_formats)]
+            unknown_files = [file for file in files if file not in music_files and file not in graphic_files]
 
             if music_files or graphic_files:
                 # 'path' is the full path to the files, e.g. /media/NAS_MEDIA/music/Queen/A Day At The Races"
@@ -709,7 +729,15 @@ def load_library(media_dirs):
                         base_dict["graphic"] = graphic_file
                         num_graphics += 1
 
+            # Add the extensions of any unknown files to the unknown extensions list.
+            # This gives the user a clue that they have unknown media types.
+            for unknown_file in unknown_files:
+                unknown_extension = os.path.splitext(unknown_file)[1]
+                if unknown_extension not in unknown_extensions:
+                    unknown_extensions.append(unknown_extension)
+
         logging.info("Loaded {} songs and {} graphics".format(num_songs, num_graphics))
+        logging.info("Unkown media types: {}".format(unknown_extensions))
 
     return library
 
@@ -723,7 +751,8 @@ if __name__ == '__main__':
     # Get the source directory
     script_path = os.path.dirname(os.path.realpath(__file__))
 
-    # TODO Delete any old transcode outputs
+    # Delete any old transcode outputs
+    Transcoder.CleanUp()
 
     # Load the library of songs to serve
     library = load_library(sys.argv[1:])
