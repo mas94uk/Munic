@@ -52,7 +52,7 @@ class Transcoder:
         logging.info("Cleaning up old transcoded files")
         for old_transcode in pathlib.Path(Transcoder.TRANSCODE_DIR).glob("TRANSCODE_*.*"):
             logging.debug("Removing old transcode output {}".format(old_transcode))
-            os.remove(os.path.join(Transcoder.TRANSCODE_DIR, old_transcode))
+            os.remove(os.path.join(Transcoder.TRANSCODE_DIR, str(old_transcode)))
 
     """ Constructor """
     def __init__(self, requested_filepath, source_filepath, target_extension):
