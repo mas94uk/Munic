@@ -72,8 +72,9 @@ class Transcoder:
 
         # Start the transcode
         # The "-flush_packets 1" argument causes the output to be written to the file more quickly, rather than being buffered.
-        # This helps avoid glitches at the start of playback if running on slow hardware (e.g. raspberry pi zero).
-        self.transcode_process = subprocess.Popen(["ffmpeg", "-i", source_filepath, "-flush_packets", "1", self.out_file],
+        # This helps speed up and avoid glitches at the start of playback if running on slow hardware (e.g. raspberry pi zero).
+        # The "-vn" argument ensures we do not put video in the output.
+        self.transcode_process = subprocess.Popen(["ffmpeg", "-i", source_filepath, "-vn", "-flush_packets", "1", self.out_file],
                                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     """ Destructor """
