@@ -514,7 +514,8 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
 
             total_sent = 0
-            CHUNK_SIZE = 65536  # 64kB at a time
+            FIRST_CHUNK_SIZE = 131072 # 128kB in first chunk 
+            FOLLOWING_CHUNK_SIZE = 65536  # 64kB at a time
             time.sleep(1)
             try:
                 if range_start is None:
@@ -528,10 +529,11 @@ class Handler(BaseHTTPRequestHandler):
                 f.seek(range_start)
 
                 # While we are still transcoding, send a chunk at a time
+                chunk_size = FIRST_CHUNK_SIZE
                 while not transcoder.transcode_finished() and left_to_send > 0:
                     file_length_remaining = os.fstat(f.fileno())[6] - f.tell()
-                    if file_length_remaining >= CHUNK_SIZE:
-                        length_to_read = min(CHUNK_SIZE, left_to_send)
+                    if file_length_remaining >= chunk_size:
+                        length_to_read = min(chunk_size, left_to_send)
                         data = f.read(length_to_read)
                         length_read = len(data)
                         chunk_size_string = "%x\r\n" % length_read
@@ -540,6 +542,7 @@ class Handler(BaseHTTPRequestHandler):
                         self.wfile.write("\r\n".encode("utf-8"))
                         total_sent += length_read
                         left_to_send -= length_read
+                        chunk_size = FOLLOWING_CHUNK_SIZE
                     else:
                         time.sleep(0.1)
 
@@ -549,7 +552,7 @@ class Handler(BaseHTTPRequestHandler):
                 # While there is file remaining
                 while os.fstat(f.fileno())[6] - f.tell() > 0 and left_to_send > 0:
                     file_remaining = os.fstat(f.fileno())[6] - f.tell()
-                    length_to_read = min(CHUNK_SIZE, file_remaining, left_to_send)
+                    length_to_read = min(chunk_size, file_remaining, left_to_send)
                     data = f.read(length_to_read)
                     length_read = len(data)
                     chunk_size_string = "%x\r\n" % length_read
@@ -558,6 +561,7 @@ class Handler(BaseHTTPRequestHandler):
                     self.wfile.write("\r\n".encode("utf-8"))
                     total_sent += length_read
                     left_to_send -= length_read
+                    chunk_size = FOLLOWING_CHUNK_SIZE
 
                 # Send an empty chunk to indicate the end of file
                 self.wfile.write("0\r\n\r\n".encode("utf-8"))
