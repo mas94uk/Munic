@@ -43,8 +43,8 @@ class AudioPlaylist{
         if(parts.length == 2) {
             var stem = parts[0]
             var original_format = parts[1]
-            // Put the original format first, except if it is FLAC (because the bandwidth use is too high)
-            if(original_format != "flac") {
+            // Put the original format first, except if it is FLAC or WAV (because the bandwidth use is too high)
+            if(original_format != "flac" && original_format != "wav") {
                 sources = sources + source_template.replace("__FILE__", original_url).replace("__MIMETYPE__", this.mimeType(original_format));
             }
             // Offer ogg transcode (if the original was not ogg)
@@ -54,10 +54,6 @@ class AudioPlaylist{
             // Offer mp3 transcode (if the original was not mp3)
             if(original_format != "mp3") {
                 sources = sources + source_template.replace("__FILE__", stem + ".mp3").replace("__MIMETYPE__", "mpeg");
-            }
-            // Put FLAC last, but only if that is the original format -- never offer to transcode to flac
-            if(original_format == "flac") {
-                sources = sources + source_template.replace("__FILE__", original_url).replace("__MIMETYPE__", "flac");
             }
         }
         this.player.innerHTML = sources;
