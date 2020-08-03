@@ -349,7 +349,6 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Length", len(encoded))
         self.send_header("Content-Type", 'text/html; charset=utf-8')
-        self.send_header("Accept-Ranges", 'bytes')
         self.end_headers()
 
         self.wfile.write(encoded)
@@ -497,8 +496,17 @@ class Handler(BaseHTTPRequestHandler):
                     self.end_headers()
                     return
 
-                reply_range_end = os.fstat(f.fileno())[6] -1
+            if range_requested and transcoder.transcode_finished():
+                reply_range_end = os.fstat(f.fileno())[6] - 1
                 reply_file_length = os.fstat(f.fileno())[6]
+            else:
+                # If the transcode has not finished, we cannot produce a legal Content-Range header because
+                # the range must be fully specified (start and end). Therefore we must send the whole file.
+                # We do not need to send a Content-Length header because we are using Transfer-Encoding: chunked.
+                logging.debug("Transcode incomplete so not returning a Range")
+                range_requested = False
+                range_start = 0
+                range_end = None
 
             if range_requested:
                 self.send_response(206) # Partial content
