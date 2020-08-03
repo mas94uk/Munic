@@ -478,9 +478,9 @@ class Handler(BaseHTTPRequestHandler):
             reply_range_start = 0
             if range_start is not None:
                 reply_range_start = range_start
-                while os.fstat(f.fileno())[6] < range_start and not transcoder.transcode_finished():
+                while os.fstat(f.fileno())[6] <= range_start and not transcoder.transcode_finished():
                     time.sleep(0.1)
-                if os.fstat(f.fileno())[6] < range_start:
+                if os.fstat(f.fileno())[6] <= range_start:
                     # Range Not Satisfiable
                     self.send_response(416)
                     self.end_headers()
@@ -509,7 +509,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Accept-Ranges", 'bytes')
             self.send_header("Cache-Control", "max-age=1000")
             if mime_type:
-                self.send_header("Content-Type", "audio/ogg")
+                self.send_header("Content-Type", mime_type)
             self.send_header("Transfer-Encoding", "chunked")
             self.end_headers()
 
@@ -540,6 +540,7 @@ class Handler(BaseHTTPRequestHandler):
                         self.wfile.write(chunk_size_string.encode("utf-8"))
                         self.wfile.write(data)
                         self.wfile.write("\r\n".encode("utf-8"))
+                        self.wfile.flush()
                         total_sent += length_read
                         left_to_send -= length_read
                         chunk_size = FOLLOWING_CHUNK_SIZE
@@ -742,7 +743,7 @@ def load_library(media_dirs):
                     unknown_extensions.append(unknown_extension)
 
         logging.info("Loaded {} songs and {} graphics".format(num_songs, num_graphics))
-        logging.info("Unkown media types: {}".format(unknown_extensions))
+        logging.info("Unknown media types: {}".format(unknown_extensions))
 
     return library
 
