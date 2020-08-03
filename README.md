@@ -8,6 +8,10 @@ It will transcode music (to ogg or mp3, using ffmpeg) if your browser does not s
 
 It does not read ID3 tags or other metadata.  Fuller-featured music servers/players are available if that is what you want: Airsonic and Ampache are good, for example.
 
+## Screenshots
+![Front page](screenshots/Screenshot1.png "Front page showing list of artists")
+![Album view](screenshots/Screenshot2.png "An album")
+
 ## Usage
 Munic is tested on Ubuntu 18.04 but should work on any Linux with python3.  Let me know if you try it on other operating systems (Windows, Mac...).
 
