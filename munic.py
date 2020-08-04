@@ -451,9 +451,6 @@ class Handler(BaseHTTPRequestHandler):
         # Housekeep existing transcoders after (possibly) adding one
         self.prune_transcoders()
 
-        # Get the mime type of the transcoded file
-        mime_type, encoding = mimetypes.guess_type(requested_filepath)
-
         # Get the name of the transcoded file (also waits for it to be created)
         transcoded_filepath = transcoder.get_transcoded_filepath()
 
@@ -463,58 +460,16 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers
             return
 
-        # Was a range requested?
-        range_requested = True if range_start is not None or range_end is not None else False
+        # If the transcode has already finished, send it as a regular file -- offering ranges
+        if transcoder.transcode_finished():
+            self.send_file(transcoder.get_transcoded_filepath(), range_start, range_end)
+            return
+
+        # Get the mime type of the transcoded file
+        mime_type, encoding = mimetypes.guess_type(requested_filepath)
 
         with open(transcoded_filepath, 'rb') as f:
-            if range_requested and not f.seekable():
-                logging.warn("File not seekable: not sending range")
-                range_requested = False
-                range_start = None
-                range_end = None
-
-            # If a range start was specified, wait until the file is large enough
-            reply_range_start = 0
-            if range_start is not None:
-                reply_range_start = range_start
-                while os.fstat(f.fileno())[6] <= range_start and not transcoder.transcode_finished():
-                    time.sleep(0.1)
-                if os.fstat(f.fileno())[6] <= range_start:
-                    # Range Not Satisfiable
-                    self.send_response(416)
-                    self.end_headers()
-                    return
-
-            # We the range end was specified AND we know the file size
-            reply_range_end = ""    # By default, not specified
-            reply_file_length = "*" # By default, not specified
-            if range_end is not None and transcoder.transcode_finished():
-                # If the file is too small
-                if range_end >= os.fstat(f.fileno())[6]:
-                    # Range Not Satisfiable
-                    self.send_response(416)
-                    self.end_headers()
-                    return
-
-            if range_requested and transcoder.transcode_finished():
-                reply_range_end = os.fstat(f.fileno())[6] - 1
-                reply_file_length = os.fstat(f.fileno())[6]
-            else:
-                # If the transcode has not finished, we cannot produce a legal Content-Range header because
-                # the range must be fully specified (start and end). Therefore we must send the whole file.
-                # We do not need to send a Content-Length header because we are using Transfer-Encoding: chunked.
-                logging.debug("Transcode incomplete so not returning a Range")
-                range_requested = False
-                range_start = 0
-                range_end = None
-
-            if range_requested:
-                self.send_response(206) # Partial content
-                self.send_header("Content-Range", "bytes {}-{}/{}".format(reply_range_start, reply_range_end, reply_file_length))
-            else:
-                self.send_response(200)
-
-            self.send_header("Accept-Ranges", 'bytes')
+            self.send_response(200)
             self.send_header("Cache-Control", "max-age=1000")
             if mime_type:
                 self.send_header("Content-Type", mime_type)
@@ -526,23 +481,12 @@ class Handler(BaseHTTPRequestHandler):
             FOLLOWING_CHUNK_SIZE = 65536  # 64kB at a time
             time.sleep(1)
             try:
-                if range_start is None:
-                    range_start = 0
-                if range_end:
-                    left_to_send = range_end - range_start + 1
-                else:
-                    left_to_send = math.inf
-
-                # Seek to the desired start (lazily just asusming it worked)
-                f.seek(range_start)
-
                 # While we are still transcoding, send a chunk at a time
                 chunk_size = FIRST_CHUNK_SIZE
-                while not transcoder.transcode_finished() and left_to_send > 0:
+                while not transcoder.transcode_finished():
                     file_length_remaining = os.fstat(f.fileno())[6] - f.tell()
                     if file_length_remaining >= chunk_size:
-                        length_to_read = min(chunk_size, left_to_send)
-                        data = f.read(length_to_read)
+                        data = f.read(chunk_size)
                         length_read = len(data)
                         chunk_size_string = "%x\r\n" % length_read
                         self.wfile.write(chunk_size_string.encode("utf-8"))
@@ -550,18 +494,17 @@ class Handler(BaseHTTPRequestHandler):
                         self.wfile.write("\r\n".encode("utf-8"))
                         self.wfile.flush()
                         total_sent += length_read
-                        left_to_send -= length_read
                         chunk_size = FOLLOWING_CHUNK_SIZE
                     else:
                         time.sleep(0.1)
 
                 # Send the rest
-                logging.info("Finished waiting for transcode with {} bytes remaining".format(left_to_send))
+                logging.info("Finished waiting for transcode")
                 file_length = os.fstat(f.fileno())[6]
                 # While there is file remaining
-                while os.fstat(f.fileno())[6] - f.tell() > 0 and left_to_send > 0:
+                while os.fstat(f.fileno())[6] - f.tell() > 0:
                     file_remaining = os.fstat(f.fileno())[6] - f.tell()
-                    length_to_read = min(chunk_size, file_remaining, left_to_send)
+                    length_to_read = min(chunk_size, file_remaining)
                     data = f.read(length_to_read)
                     length_read = len(data)
                     chunk_size_string = "%x\r\n" % length_read
@@ -569,7 +512,6 @@ class Handler(BaseHTTPRequestHandler):
                     self.wfile.write(data)
                     self.wfile.write("\r\n".encode("utf-8"))
                     total_sent += length_read
-                    left_to_send -= length_read
                     chunk_size = FOLLOWING_CHUNK_SIZE
 
                 # Send an empty chunk to indicate the end of file
