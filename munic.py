@@ -529,8 +529,8 @@ class Handler(BaseHTTPRequestHandler):
         running = [t for t in transcoders if not t.transcode_finished()]
         # Remove the oldest running transcoders
         while len(running) > MAX_SIMULTANEOUS_TRANSCODES:
-            logging.info("Removing one running transcoder")
             t = running.pop(0)
+            logging.info("Removing one running transcoder: {}".format(t.requested_filepath))
             transcoders.remove(t)
             t = None
 
@@ -538,8 +538,8 @@ class Handler(BaseHTTPRequestHandler):
         completed = [t for t in transcoders if t.transcode_finished()]
         # Remove the oldest completed transcodes
         while len(completed) > MAX_COMPLETED_TRANSCODES:
-            logging.info("Removing one completed transcode")
             t = completed.pop(0)
+            logging.info("Removing one completed transcode: {}".format(t.requested_filepath))
             transcoders.remove(t)
             t = None
 
