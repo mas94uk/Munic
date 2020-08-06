@@ -17,6 +17,7 @@ import re
 import random
 import subprocess
 import time
+import weakref
 import code # For code.interact()
 
 # Whether to use HTTPS
@@ -37,8 +38,14 @@ script_path = None
 # Ongoing media GETs - for debug
 media_gets = {}
 
-# Start with an empty list of transcode jobs
-transcoders = []
+# The cache of transcoders: a dictionary of requestedFilepath:transcoderObject, using weak references
+transcoders_cache = weakref.WeakValueDictionary()
+
+# The running transcoders we want to keep alive (MAX_SIMULTANEOUS_TRANSCODES)
+running_transcoders_to_keep = []
+
+# The completed transcode jobs we want to keep (MAX_COMPLETED_TRANSCODES)
+completed_transcoders_to_keep = []
 
 class Transcoder:
     # Index for the next transcode temp file
@@ -328,7 +335,7 @@ class Handler(BaseHTTPRequestHandler):
                     # Otherwise if the requested format is a supported type, transcode and send 
                     elif MAX_SIMULTANEOUS_TRANSCODES and requested_extension in (".ogg", ".mp3"):
                         self.send_transcoded_file(name, filepath, requested_extension, range_start, range_end)
-                        self.prune_transcoders()
+                        self.housekeep_transcoders()
                         found = True
             
             if not found:
@@ -433,36 +440,48 @@ class Handler(BaseHTTPRequestHandler):
         logging.info("Sending transcoded file {} -> {}".format(source_filepath, requested_filepath))
 
         # Get the existing transcoder if it exists
-        transcoder = None
-        for t in transcoders:
-            if t.requested_filepath == requested_filepath:
-                transcoder = t
+        try:
+            transcoder = transcoders_cache[requested_filepath]
 
-                # 'Refresh' this transcoder by moving it to the end of the list
-                transcoders.remove(t)
-                transcoders.append(t)
-                break
+            # Remove the transcoder from any of the "to keep" lists it is in.
+            # (We will add it at the end below.)
+            try:
+                running_transcoders_to_keep.remove(transcoder)
+            except ValueError:
+                pass
 
-        # Else create a new one and store it
-        if not transcoder:
+            try:
+                completed_transcoders_to_keep.remove(transcoder)
+            except ValueError:
+                pass
+
+        except KeyError:
+            # Else create a new one and store it
             transcoder = Transcoder(requested_filepath, source_filepath, requested_extension)
-            transcoders.append(transcoder)
+            transcoders_cache[requested_filepath] = transcoder
+
+        # Put the transcoder at the end of the appropriate "to keep" list
+        if transcoder.transcode_finished():
+            completed_transcoders_to_keep.append(transcoder)
+        else:
+            running_transcoders_to_keep.append(transcoder)
 
         # Housekeep existing transcoders after (possibly) adding one
-        self.prune_transcoders()
+        self.housekeep_transcoders()
 
         # Get the name of the transcoded file (also waits for it to be created)
         transcoded_filepath = transcoder.get_transcoded_filepath()
 
         # If the file was not created, send a 404.  Note that it could just be very slow.
         if not transcoded_filepath:
+            logging.warning("Transcoded file not found")
             self.send_response(404)
             self.end_headers
             return
 
         # If the transcode has already finished, send it as a regular file -- offering ranges
         if transcoder.transcode_finished():
-            self.send_file(transcoder.get_transcoded_filepath(), range_start, range_end)
+            self.send_file(transcoded_filepath, range_start, range_end)
             return
 
         # Get the mime type of the transcoded file
@@ -523,25 +542,26 @@ class Handler(BaseHTTPRequestHandler):
             except ConnectionResetError:
                 logging.warn("Connetion reset by peer sending {} after {} bytes".format(requested_filepath, total_sent))
 
-    """ Prune the list of transcoders, removing the oldest if we have too may """
-    def prune_transcoders(self):
-        # Get a list of still-in-progress transcoders
-        running = [t for t in transcoders if not t.transcode_finished()]
-        # Remove the oldest running transcoders
-        while len(running) > MAX_SIMULTANEOUS_TRANSCODES:
-            t = running.pop(0)
-            logging.info("Removing one running transcoder: {}".format(t.requested_filepath))
-            transcoders.remove(t)
-            t = None
+    """ Housekeep the list of transcoders:
+        - Move completed ones to the completed "to keep" list.
+        - Remove the oldest in each "to keep" list if we have too many. """
+    def housekeep_transcoders(self):
+        global running_transcoders_to_keep, completed_transcoders_to_keep
+        # Move any completed transcodes from the running to the completed "to keep" list
+        for t in running_transcoders_to_keep:
+            if t.transcode_finished():
+                logging.debug("Moving transcode {} from running list to completed".format(t.requested_filepath))
+                running_transcoders_to_keep.remove(t)
+                completed_transcoders_to_keep.append(t)
 
-        # Get a list of completed transcodes
-        completed = [t for t in transcoders if t.transcode_finished()]
-        # Remove the oldest completed transcodes
-        while len(completed) > MAX_COMPLETED_TRANSCODES:
-            t = completed.pop(0)
-            logging.info("Removing one completed transcode: {}".format(t.requested_filepath))
-            transcoders.remove(t)
-            t = None
+        # Prune the lists of transoders
+        running_transcoders_to_keep = running_transcoders_to_keep[-MAX_SIMULTANEOUS_TRANSCODES:]
+        completed_transcoders_to_keep = completed_transcoders_to_keep[-MAX_COMPLETED_TRANSCODES:]
+
+        # Items with no remaining references will magically disappear from the transcoders_cache 
+
+        logging.debug("Running transcoders to keep: {}, completed: {}, cache: {}"
+            .format(len(running_transcoders_to_keep), len(completed_transcoders_to_keep), len(transcoders_cache)))
 
 class ThreadingSimpleServer(ThreadingMixIn, HTTPServer):
     pass
