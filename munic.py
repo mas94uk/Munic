@@ -442,29 +442,13 @@ class Handler(BaseHTTPRequestHandler):
         # Get the existing transcoder if it exists
         try:
             transcoder = transcoders_cache[requested_filepath]
-
-            # Remove the transcoder from any of the "to keep" lists it is in.
-            # (We will add it at the end below.)
-            try:
-                running_transcoders_to_keep.remove(transcoder)
-            except ValueError:
-                pass
-
-            try:
-                completed_transcoders_to_keep.remove(transcoder)
-            except ValueError:
-                pass
-
         except KeyError:
             # Else create a new one and store it
             transcoder = Transcoder(requested_filepath, source_filepath, requested_extension)
             transcoders_cache[requested_filepath] = transcoder
 
         # Put the transcoder at the end of the appropriate "to keep" list
-        if transcoder.transcode_finished():
-            completed_transcoders_to_keep.append(transcoder)
-        else:
-            running_transcoders_to_keep.append(transcoder)
+        self.refresh_transcoder(transcoder)
 
         # Housekeep existing transcoders after (possibly) adding one
         self.housekeep_transcoders()
@@ -517,6 +501,10 @@ class Handler(BaseHTTPRequestHandler):
                     else:
                         time.sleep(0.1)
 
+                # In case this transcode was not one of the "to keep" ones (becuase there were more than
+                # MAX_SIMULTANEOUS_TRANSCODES connections), add it to the completed "to keep" list
+                self.refresh_transcoder(transcoder)
+
                 # Send the rest
                 logging.info("Finished waiting for transcode")
                 file_length = os.fstat(f.fileno())[6]
@@ -541,6 +529,25 @@ class Handler(BaseHTTPRequestHandler):
                 logging.warn("Broken pipe error sending {} after {} bytes".format(requested_filepath, total_sent))
             except ConnectionResetError:
                 logging.warn("Connetion reset by peer sending {} after {} bytes".format(requested_filepath, total_sent))
+
+    """ Put the given transcoder at the end of the appropriate to-keep list"""
+    def refresh_transcoder(self, transcoder):
+        # Remove the transcoder from any of the "to keep" lists it is in.
+        # (We will add it at the end below.)
+        try:
+            running_transcoders_to_keep.remove(transcoder)
+        except ValueError:
+            pass
+
+        try:
+            completed_transcoders_to_keep.remove(transcoder)
+        except ValueError:
+            pass
+
+        if transcoder.transcode_finished():
+            completed_transcoders_to_keep.append(transcoder)
+        else:
+            running_transcoders_to_keep.append(transcoder)
 
     """ Housekeep the list of transcoders:
         - Move completed ones to the completed "to keep" list.
