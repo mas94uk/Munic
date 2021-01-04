@@ -80,8 +80,10 @@ class Transcoder:
         # Start the transcode
         # The "-flush_packets 1" argument causes the output to be written to the file more quickly, rather than being buffered.
         # This helps speed up and avoid glitches at the start of playback if running on slow hardware (e.g. raspberry pi zero).
-        # The "-vn" argument ensures we do not put video in the output.
-        self.transcode_process = subprocess.Popen(["ffmpeg", "-i", source_filepath, "-vn", "-flush_packets", "1", self.out_file],
+        # The "-vn" argument ensures we do not put video in the output, which can mean the entire file must be transcoded
+        # before anything is written to disk.
+        # The "-v quiet" supresses output -- nobody will read it anyway, and it can leave the console in a bad state if cancelled.
+        self.transcode_process = subprocess.Popen(["ffmpeg", "-v", "quiet", "-i", source_filepath, "-vn", "-flush_packets", "1", self.out_file],
                                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     """ Destructor """
@@ -181,7 +183,7 @@ class Handler(BaseHTTPRequestHandler):
             for part in parts:
                 # If that directory does not exist
                 if part not in dirs.keys():
-                    logging.warn("Failed to find {} - failed at {}".format(requested_path, part))
+                    logging.warning("Failed to find {} - failed at {}".format(requested_path, part))
                     self.send_response(404)
                     self.end_headers
                     return
@@ -337,7 +339,7 @@ class Handler(BaseHTTPRequestHandler):
                         self.send_transcoded_file(name, filepath, requested_extension, range_start, range_end)
                         self.housekeep_transcoders()
                         found = True
-            
+
             if not found:
                 logging.warning("File {}{}) not found in library".format(basename, requested_extension))
                 self.send_response(404)
@@ -375,7 +377,7 @@ class Handler(BaseHTTPRequestHandler):
             # If the file is not seekable, end the whole thing.
             # (We could read and discard if this is a problem, but it is not expected to happen.)
             if range_requested and not f.seekable():
-                logging.warn("File not seekable: not sending range")
+                logging.warning("File not seekable: not sending range")
                 range_requested = False
                 range_start = None
                 range_end = None
@@ -428,12 +430,12 @@ class Handler(BaseHTTPRequestHandler):
 
                 logging.info("Successfully sent file {}".format(filepath))
             except BrokenPipeError:
-                logging.warn("Broken pipe error sending {} after {} bytes".format(filepath, total_sent))
+                logging.warning("Broken pipe error sending {} after {} bytes".format(filepath, total_sent))
             except ConnectionResetError:
-                logging.warn("Connetion reset by peer sending {} after {} bytes".format(filepath, total_sent))
+                logging.warning("Connetion reset by peer sending {} after {} bytes".format(filepath, total_sent))
         logging.info("File send finished on thread {}".format(threading.get_ident()))
         media_gets.pop(threading.get_ident())
-        logging.debug("Ongoing transfers: " + str(media_gets)) 
+        logging.debug("Ongoing transfers: " + str(media_gets))
 
     """ Send the given file, transcoded to the specified format"""
     def send_transcoded_file(self, requested_filepath, source_filepath, requested_extension, range_start:int = None, range_end:int = None):
@@ -526,9 +528,9 @@ class Handler(BaseHTTPRequestHandler):
 
                 logging.info("Successfully sent transcoded file ({} bytes)".format(total_sent))
             except BrokenPipeError:
-                logging.warn("Broken pipe error sending {} after {} bytes".format(requested_filepath, total_sent))
+                logging.warning("Broken pipe error sending {} after {} bytes".format(requested_filepath, total_sent))
             except ConnectionResetError:
-                logging.warn("Connetion reset by peer sending {} after {} bytes".format(requested_filepath, total_sent))
+                logging.warning("Connetion reset by peer sending {} after {} bytes".format(requested_filepath, total_sent))
 
     """ Put the given transcoder at the end of the appropriate to-keep list"""
     def refresh_transcoder(self, transcoder):
@@ -565,7 +567,7 @@ class Handler(BaseHTTPRequestHandler):
         running_transcoders_to_keep = running_transcoders_to_keep[-MAX_SIMULTANEOUS_TRANSCODES:]
         completed_transcoders_to_keep = completed_transcoders_to_keep[-MAX_COMPLETED_TRANSCODES:]
 
-        # Items with no remaining references will magically disappear from the transcoders_cache 
+        # Items with no remaining references will magically disappear from the transcoders_cache
 
         logging.debug("Running transcoders to keep: {}, completed: {}, cache: {}"
             .format(len(running_transcoders_to_keep), len(completed_transcoders_to_keep), len(transcoders_cache)))
@@ -596,9 +598,9 @@ def get_all_songs(dir_dict, constructed_path: str = "", display_path: str = ""):
     for media_simplified_name in media.keys():
         media_filepath = media[media_simplified_name][1]
         extension = os.path.splitext(media_filepath)[1]
-        constructed_filepath = constructed_path + media_simplified_name + extension 
+        constructed_filepath = constructed_path + media_simplified_name + extension
         media_display_name = media[media_simplified_name][0]
-        
+
         # If there is a path, add it on the end (suitably formatted)
         formatted_display_path = display_path.rstrip("/").replace("/", ": ")
         if formatted_display_path:
@@ -734,14 +736,14 @@ if __name__ == '__main__':
     # Get the source directory
     script_path = os.path.dirname(os.path.realpath(__file__))
 
-    # Delete any old transcode outputs
-    Transcoder.CleanUp()
-
     # Load the library of songs to serve
     library = load_library(sys.argv[1:])
 
     # Serve on all interfaces, port 4444
     server = ThreadingSimpleServer(('0.0.0.0', 4444), Handler)
+
+    # Delete any old transcode outputs. We do this after setting up the server so that if an instance is already running, we do not delete its transcodes.
+    Transcoder.CleanUp()
 
     if USE_HTTPS:
         import ssl
