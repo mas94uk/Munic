@@ -18,7 +18,7 @@ import random
 import subprocess
 import time
 import weakref
-import code # For code.interact()
+#import code # For code.interact()
 
 # Whether to use HTTPS
 USE_HTTPS = False
@@ -265,8 +265,8 @@ class Handler(BaseHTTPRequestHandler):
             # Find album art
             album_art = None
             # If there is a graphic at this level, use it
-            if base_dict["graphic"]:
-                album_art = base_dict["graphic"]
+            if base_dict["graphic_name"]:
+                album_art = base_dict["graphic_name"]
             # Otherwise get a random image from anywhere below this
             else:
                 album_arts = get_all_graphics(base_dict)
@@ -319,8 +319,8 @@ class Handler(BaseHTTPRequestHandler):
             found = False
 
             # If the requested file is the graphic in this directory
-            if constructed_filename == base_dict["graphic"]:
-                filepath = base_dict["path"] + base_dict["graphic"]
+            if constructed_filename == base_dict["graphic_name"]:
+                filepath = base_dict["graphic_filepath"]
                 self.send_file(filepath, range_start, range_end)
                 found = True
             else:
@@ -374,7 +374,7 @@ class Handler(BaseHTTPRequestHandler):
         mime_type, encoding = mimetypes.guess_type(filepath)
 
         with open(filepath, 'rb') as f:
-            # If the file is not seekable, end the whole thing.
+            # If the file is not seekable, send the whole thing.
             # (We could read and discard if this is a problem, but it is not expected to happen.)
             if range_requested and not f.seekable():
                 logging.warning("File not seekable: not sending range")
@@ -383,7 +383,7 @@ class Handler(BaseHTTPRequestHandler):
                 range_end = None
 
             # Find the length of the file
-            file_length = os.fstat(f.fileno())[6]
+            file_length = os.fstat(f.fileno()).st_size
             logging.debug("File length: {}".format(file_length))
 
             # Populate ranges if not already done
@@ -628,8 +628,8 @@ def get_all_graphics(dir_dict, constructed_path: str = "", display_path: str = "
     result = []
 
     # Get graphic file in this directory, if it exists
-    if dir_dict["graphic"]:
-        result.append(constructed_path + dir_dict["graphic"])
+    if dir_dict["graphic_name"]:
+        result.append(constructed_path + dir_dict["graphic_name"])
 
     # Recurse into all sub-dirs, appending the directory name to the path
     for sub_dir in dirs.keys():
@@ -648,10 +648,10 @@ def load_library(media_dirs):
     # Walk the given path, creating a data structure as follows:
     # A recursive structure of a dict representing the top level, containing:
     #  - "display_name" (properly-formatted name, for display)
-    #  - "path" (the path to the real location of this directory, ending with "/")
     #  - "media" (dict of simplified-songname:tuple of (songname:filepath) )
     #  - "dirs" (dict of simplified-dirname:directory-dict like the top level)
-    #  - "graphic" (graphic filename, if present)
+    #  - "graphic_name" (graphic name, for the HTML/request, if present)
+    #  - "graphic_filepath" (graphic local filepath, if present)
     # The filenames will be the full filepath of the file.
     # Directories will be indexed by "simplfied" name: a lower-case, alpha-numeric version of the real name, with the first "the" removed.
     # Because we want to be able to overlay multiple directories, we cannot simply walk and create the structure as we find it.
@@ -663,11 +663,9 @@ def load_library(media_dirs):
     known_music_formats = (".mp3", ".mp4", ".m4a", ".ogg", ".wav", ".flac", ".wma")
     known_grapic_formats = (".jpg", ".jpeg", ".gif", ".bmp", ".png")
 
-    library = { "display_name":None, "path":script_path +"/", "media":{}, "dirs":{}, "graphic":"munic.png" }
+    graphic_filepath = os.path.join(script_path, "munic.png")
+    library = { "display_name":None, "media":{}, "dirs":{}, "graphic_name":"munic.png", "graphic_filepath":graphic_filepath }
     # TODO Don't put empty stuff in, create ditionary entries when needed
-    # TODO There's a bug here: if the same album exists in two locations, we merge them but only store one path.
-    #      Hence half the links are broken -- most noticeable with the graphics.
-    #      Probably revert to storing the whole filepath, for seamless merging. 
     num_songs = 0
     num_graphics = 0
     unknown_extensions = []
@@ -692,14 +690,14 @@ def load_library(media_dirs):
                     if part:    # (Directory might be empty meaning the root -- don't create a new dict for it!)
                         part_simplified = simplify(part)
                         if not part_simplified in base_dict["dirs"]:
-                            base_dict["dirs"][part_simplified] = { "display_name":part, "path":path.rstrip("/") + "/", "media":{}, "dirs":{}, "graphic":None }
+                            base_dict["dirs"][part_simplified] = { "display_name":part, "media":{}, "dirs":{}, "graphic_name":None, "graphic_filepath":None }
                         base_dict = base_dict["dirs"][part_simplified]
 
                 for music_file in music_files:
                     # Get the song name from the filename by stripping the extension
                     song_name = os.path.splitext(music_file)[0]
                     simplified_songname = simplify(song_name)
-                    song_filepath = path.rstrip("/") + "/" + music_file
+                    song_filepath = os.path.join(path, music_file)
 
                     # Insert the item, keyed by song name, with the full path as value
                     base_dict["media"][simplified_songname] = (song_name, song_filepath)
@@ -707,11 +705,12 @@ def load_library(media_dirs):
                     num_songs += 1
 
                 largest_size = 0
-                for graphic_file in graphic_files:
-                    graphic_filename = path.rstrip("/") + "/" + graphic_file
-                    size = os.path.getsize(graphic_filename)
+                for graphic_filename in graphic_files:
+                    graphic_filepath = os.path.join(path, graphic_filename)
+                    size = os.path.getsize(graphic_filepath)
                     if size > largest_size:
-                        base_dict["graphic"] = graphic_file
+                        base_dict["graphic_name"] = graphic_filename
+                        base_dict["graphic_filepath"] = graphic_filepath
                         num_graphics += 1
 
             # Add the extensions of any unknown files to the unknown extensions list.
@@ -748,5 +747,6 @@ if __name__ == '__main__':
     if USE_HTTPS:
         import ssl
         server.socket = ssl.wrap_socket(server.socket, keyfile='./key.pem', certfile='./cert.pem', server_side=True)
+    logging.info("Serving on port 4444")
     server.serve_forever()
 
