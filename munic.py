@@ -154,6 +154,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_file(os.path.join(script_path, "audioPlayer.js"))
         elif name == "/favicon.png":
             self.send_file(os.path.join(script_path, "favicon.png"))
+        elif name == "/munic.css":
+            self.send_file(os.path.join(script_path, "munic.css"))
         # If the url ends with a "/" or "/*", treat it as a menu/playlist request for that location 
         elif name.endswith("/") or name.endswith("/*"):
             # If the request is for a directory, we treat it as requesting a list of subdirs (artists, albums etc.) in that location.
@@ -222,10 +224,11 @@ class Handler(BaseHTTPRequestHandler):
                 html = html.replace("__HEADING{}__".format(h), display_names[h])
 
             # Generate some colours and drop them in
+            # TODO Get these from the selected image
             r = [ random.randint(1,3) for a in range (0,9) ]
             colours = [ "#{}{}{}".format(r.pop(), r.pop(), r.pop()) for a in range(0,3) ]
             for c in range(0,3):
-                html = html.replace("__COL{}__".format(c), colours[c])
+                html = html.replace("__BG_COL{}__".format(c), colours[c])
 
             # Build the playlist (subdir) links section
             playlist_links = ""

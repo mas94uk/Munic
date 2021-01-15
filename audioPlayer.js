@@ -143,20 +143,21 @@ class AudioPlaylist{
         // All the others (m4a, ogg, wav, flac, wma) happen to be the same as the file extension
         return extension;
     } 
-    constructor(config = {} ){
+    constructor(){
         // Set defaults and initialzing player 
         var classObj = this; // store scope for event listeners
-        this.shuffle = (config.shuffle === true) ? true : false;
-        this.playerId = (config.playerId) ? config.playerId : "audioPlayer";
-        this.playlistId = (config.playlistId) ? config.playlistId : "playlist";
-        this.currentClass = (config.currentClass) ? config.currentClass : "current-song"
-        this.length = $("#"+this.playlistId+" li").length; 
-        this.player = $("#"+this.playerId)[0];
-        this.autoplay = (config.autoplay === true || this.player.autoplay) ? true : false;
-        this.loop = (config.loop === true) ? true : false;
+        this.shuffle = false;
+        this.playerId = "audioPlayer";
+        this.playlistId = "playlist";
+        this.currentClass = "current-song";
+        this.playlist = document.getElementById("playlist");
+        this.length = this.playlist.getElementsByTagName("li").length;
+        this.player = document.getElementById("audioPlayer");
+        this.autoplay = false;
+        this.loop = false;
         this.trackPos = 0;
         this.trackOrder = [];
-        this.title = $("#title")[0];
+        this.title = document.getElementById("title");
         this.orignalTitleText = title.innerHTML;
         this.nowPlaying = document.getElementById("nowplaying");
         for(var i = 0; i < this.length; i++){
