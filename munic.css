@@ -63,7 +63,6 @@
 :root {
    /*Base font size */
   font-size: 15px;
-  /*background-color: red;*/
   background-image: linear-gradient(to bottom, var(--BG_COL0), var(--BG_COL1), var(--BG_COL2));
   background-attachment: fixed;
 }
@@ -72,7 +71,6 @@ body {
   font-family: 'Exo 2', sans-serif;
   justify-content: center;
   align-items: center;  
-  /*background-image: linear-gradient(to bottom, var(--BG_COL0), var(--BG_COL1), var(--BG_COL2));*/
 }
 
 .topbox {
