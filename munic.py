@@ -220,9 +220,6 @@ class Handler(BaseHTTPRequestHandler):
             for h in range(0,3):
                 html = html.replace("__HEADING{}__".format(h), display_names[h])
 
-            # Find album art
-            album_art = get_art_filepath(base_dict)
-
             # Generate some colours and drop them in
             # TODO Get these from the selected image
             r = [ random.randint(1,3) for a in range (0,9) ]
@@ -270,7 +267,11 @@ class Handler(BaseHTTPRequestHandler):
             html = html.replace("__PLAYLIST_ITEMS__", playlist_items)
 
             # Drop in the album art
-            html = html.replace("__ALBUMART__", album_art);
+            art_filepath = get_art_filepath(base_dict)
+            if not art_filepath:
+                art_filepath = "__ROOT__/munic.png"
+
+            html = html.replace("__ALBUMART__", art_filepath);
 
             # Drop in the root location (last, in case it is used in any substituted values)
             html = html.replace("__ROOT__", root)
