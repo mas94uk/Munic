@@ -29,9 +29,11 @@
     __PLAYLIST_LINKS__
     </div>
 
-    <ul id="playlist">
-        __PLAYLIST_ITEMS__
-    </ul>
+    <div id="playlist">
+        <ul>
+            __PLAYLIST_ITEMS__
+        </ul>
+    </div>
 
     <div id="playergap"></div>
 
@@ -49,22 +51,6 @@
     <script src="https://code.jquery.com/jquery-2.2.0.js"></script>
     <script src="__AUDIOPLAY_JS__"></script>
     <script>
-      /* 
-      Default constructor configuration:
-        autoplay: false,
-        shuffle: false,
-        loop: false,
-        playerId: "audioPlayer",
-        playlistId: "playlist",
-        currentClass: "current-song"
-      */
-        
-      // loads the audio player
-      var config = {
-        autoplay: true, 
-        loop: true,
-        shuffle: true
-      };
       var playlist = new AudioPlaylist();
     </script>
 </body>

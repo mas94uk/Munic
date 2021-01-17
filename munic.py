@@ -205,9 +205,6 @@ class Handler(BaseHTTPRequestHandler):
             # Drop in the page title
             html = html.replace("__TITLE__", title)
 
-            # Drop in the root location
-            html = html.replace("__ROOT__", root)
-
             # Drop in the audioplayer javascript file
             html = html.replace("__AUDIOPLAY_JS__", root + "audioPlayer.js") 
 
@@ -222,6 +219,9 @@ class Handler(BaseHTTPRequestHandler):
             # Drop in the headings
             for h in range(0,3):
                 html = html.replace("__HEADING{}__".format(h), display_names[h])
+
+            # Find album art
+            album_art = get_art_filepath(base_dict)
 
             # Generate some colours and drop them in
             # TODO Get these from the selected image
@@ -258,32 +258,23 @@ class Handler(BaseHTTPRequestHandler):
                 media_items = get_all_songs(base_dict)
 
                 # Construct the list items
-                for (song_display_name, song_constructed_filepath) in media_items:
-                    playlist_item = """<li><a href="__SONG_FILENAME__">__SONG_NAME__</a></li>\n""".replace("__SONG_FILENAME__", song_constructed_filepath).replace("__SONG_NAME__", song_display_name)
+                for (song_display_name, song_display_album, song_constructed_filepath, art_constructed_filepath) in media_items:
+                    playlist_item = """<li><img src="__ALBUMART__"><a href="__SONG_FILENAME__"><p>__SONG_NAME__</p><p>__ALBUM_NAME__</p></a></li>\n""" \
+                        .replace("__ALBUMART__", art_constructed_filepath) \
+                        .replace("__SONG_FILENAME__", song_constructed_filepath) \
+                        .replace("__SONG_NAME__", song_display_name) \
+                        .replace("__ALBUM_NAME__", song_display_album)
                     playlist_items = playlist_items + playlist_item
 
             # Drop the playlist content into the html template
             html = html.replace("__PLAYLIST_ITEMS__", playlist_items)
 
-            # Find album art
-            album_art = None
-            # If there is a graphic at this level, use it
-            if base_dict["graphic_name"]:
-                album_art = base_dict["graphic_name"]
-            # Otherwise get a random image from anywhere below this
-            else:
-                album_arts = get_all_graphics(base_dict)
-                logging.debug("Found {} graphics to choose from".format(len(album_arts)))
-
-                if album_arts:
-                    album_art = random.choice(album_arts)
-
-            # If no graphic found, use the default logo
-            if not album_art:
-                album_art = root + "munic.png"
-
             # Drop in the album art
             html = html.replace("__ALBUMART__", album_art);
+
+            # Drop in the root location (last, in case it is used in any substituted values)
+            html = html.replace("__ROOT__", root)
+
             self.send_html(html)
 
         # Otherwise, assume the request is for a media file 
@@ -588,13 +579,19 @@ def simplify(string):
     return string
 
 """ Get a complete, flat list of all songs in the library.
-Returns an alphabetical list of tuples of (song display name, constructed filepath).
-"Constructed filepath" is the apparent filepath relative to the given dir-dict, e.g. "Queen/A Day At The Races/Drowse.mp3".
-(This includes the extension (e.g. .mp3) in case the browser requires it to play the file.)
-Song display names are postfixed with subdir names if they are in sub-directories, e.g. "Tie Your Mother Down (Queen: A Day At The Races)"."""
+Returns an alphabetical list of tuples of (song display name, album display name, constructed filepath, art constructed filepath).
+"Constructed filepath" is the apparent filepath relative to the given dir-dict, e.g. "queen/adayattheraces/drowse.mp3".
+"Art constructed filepath" is the path to request for the album art.
+(This includes the extension (e.g. .mp3) in case the browser requires it to play the file.)"""
 def get_all_songs(dir_dict, constructed_path: str = "", display_path: str = ""):
     media = dir_dict["media"]
     dirs = dir_dict["dirs"]
+    art_filepath = get_art_filepath(dir_dict)
+    if art_filepath:
+        art_filepath = constructed_path + art_filepath
+    else:
+        # If no graphic found, use the default logo
+        art_filepath = "__ROOT__/munic.png"
 
     results = []
     # Get all media files in this directory, sorted alphabetically
@@ -606,9 +603,9 @@ def get_all_songs(dir_dict, constructed_path: str = "", display_path: str = ""):
 
         # If there is a path, add it on the end (suitably formatted)
         formatted_display_path = display_path.rstrip("/").replace("/", ": ")
-        if formatted_display_path:
-            media_display_name += " ({})".format(formatted_display_path)
-        results.append( (media_display_name, constructed_filepath) )
+        # if formatted_display_path:
+        #     media_display_name += " ({})".format(formatted_display_path)
+        results.append( (media_display_name, formatted_display_path, constructed_filepath, art_filepath) )
         results.sort(key=lambda tup: tup[0].casefold())
 
     # Recurse into all sub-dirs (in alphabetical order), appending the directory name to the path
@@ -620,6 +617,26 @@ def get_all_songs(dir_dict, constructed_path: str = "", display_path: str = ""):
         results = results + get_all_songs(sub_dir_dict, constructed_path + sub_dir + "/", display_path + sub_dir_display_path + "/")
 
     return results
+
+""" Get album art for a given dictionary.
+If there is one at the base level, returns it.
+If there is not one at that level, but there is one or more beneath, return one at random.
+If there is none, return None """
+def get_art_filepath(base_dict):
+    # If there is a graphic at this level, use it
+    album_art = None
+    if base_dict["graphic_name"]:
+        album_art = base_dict["graphic_name"]
+    # Otherwise get a random image from anywhere below this
+    else:
+        album_arts = get_all_graphics(base_dict)
+        logging.debug("Found {} graphics to choose from".format(len(album_arts)))
+
+        if album_arts:
+            album_art = random.choice(album_arts)
+
+    return album_art
+
 
 """ Get a complete, flat list of all graphics in the library.
 Returns a list of constructed filepaths.
