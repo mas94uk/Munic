@@ -36,6 +36,16 @@ Munic is working and usable.  There are several more features I would like to im
 - Searching (server-side) and/or filtering of tracks
 - m3a playlist support (including generating custom playlists)
 - Change the header graphic to that of the currently-playing song
+- Remove class="playlistlink" from each link, and instead apply it to '#playlistlinks div' in the CSS. Similiar for class=album.
+- Make the top and bottom fixed, middle part scrolls. Top can compress a little perhaps when scrolling down.
+- Jump to entry on key imput: register keydown hander, keep record (escape to clear). Show popup or similar with first match. Enter to follow.
+- Currently-playing song indicated by background colour highlight, not blue text
+- Hover over playlist link colours text as well as box
+- Don't auto-load the first track: puts transcode load on the server when browsing around. (But will this stop 'play' button from working?)
+- Shuffle, next, previous, repeat -> icons
+- Repeat one song, repeat all songs, no repeat
+- Remember volume setting (cookie?)
+- Make song list appear in 2 (or more?) columns if the screen is wide enough
 
 ## Contributions
 I am happy to accept contributions if they meet the goals of what I am trying to do - send me a message if you're not sure.  If they don't meet my goals, you are welcome to fork the project, of course.

@@ -19,7 +19,10 @@
 
 #playlist img {
   height: 3rem;
-  padding-right: 1rem;
+  width: 3rem;
+  object-fit: cover;
+  border-radius: 0.3rem;
+  margin-right: 1rem;
 }
 
 #playlist a {
