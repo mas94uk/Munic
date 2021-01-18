@@ -33,11 +33,10 @@
 
 #playlist a:hover {
   color:green;
-  text-decoration: none;
 }
 
 #playlist .current-song a{
-  color:blue;
+  color:yellow;
 }
 
 #audioPlayer{
@@ -180,11 +179,10 @@ h3 {
 }
 
 #playlistlinks div:hover{
-  color: black;
   border: 1px solid green;
 }
 
-#playlistlinks a{
+#playlistlinks a {
   color:white;
   text-decoration: none;
 }

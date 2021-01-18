@@ -39,9 +39,6 @@ Munic is working and usable.  There are several more features I would like to im
 - Remove class="playlistlink" from each link, and instead apply it to '#playlistlinks div' in the CSS. Similiar for class=album.
 - Make the top and bottom fixed, middle part scrolls. Top can compress a little perhaps when scrolling down.
 - Jump to entry on key imput: register keydown hander, keep record (escape to clear). Show popup or similar with first match. Enter to follow.
-- Currently-playing song indicated by background colour highlight, not blue text
-- Hover over playlist link colours text as well as box
-- Don't auto-load the first track: puts transcode load on the server when browsing around. (But will this stop 'play' button from working?)
 - Shuffle, next, previous, repeat -> icons
 - Repeat one song, repeat all songs, no repeat
 - Remember volume setting (cookie?)
