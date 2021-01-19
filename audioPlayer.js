@@ -173,10 +173,13 @@ class AudioPlaylist{
         if(this.shuffle)
             this.randomizeOrder();
         
-        this.setTrack(this.trackPos);
-        if(this.autoplay)
-            this.player.play();
-        
+        if(this.length > 0) {
+            this.setTrack(this.trackPos);
+
+            if(this.autoplay)
+                this.player.play();
+        }
+
         // Handle track link clicks
         $("#"+this.playlistId+" li a ").click(function(e){
             e.preventDefault();
