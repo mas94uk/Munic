@@ -35,52 +35,39 @@
   color:green;
 }
 
-#playlist .current-song a{
+#playlist .current-song a {
   color:yellow;
 }
 
-#audioPlayer{
-  width: 100%;
+#audioPlayer {
   width: 100%;
 }
 
-#playerdiv{
+.footer {
   color: white;
-  background-color: var(--BG_COL2);
-  position: fixed;
   text-align: center;
-  padding-top: 10px;
-  padding-bottom: 20px;
-  bottom: 0;
-  width: calc(100% - 15px);
+  margin: 2rem;
+  margin-top: 0;
 }
 
-#playerdiv p{
+.footer p {
   color: white;
   margin-bottom: 10px;
 }
 
-#playerdiv a{
+.footer a {
   color:white;
   padding: 5px;
   text-decoration: none;
-  margin-left: 100px;
+  padding-left: 3rem; /* TODO: lay next/prev/shuffle/loop controls out better */
 }
 
-.unselectable {
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  -khtml-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-}
-
-:root {
+.content {
+  margin-left: 2rem;
+  margin-right: 2rem;
+  margin-bottom: 1rem;
    /*Base font size */
   font-size: 15px;
-  background-image: linear-gradient(to bottom, var(--BG_COL0), var(--BG_COL1), var(--BG_COL2));
-  background-attachment: fixed;
 }
 
 body {
@@ -89,7 +76,8 @@ body {
   align-items: center;  
 }
 
-.topbox {
+.header {
+  margin: 2rem;
   display: flex;
   align-items: center;
   border: 0.4rem solid #fff;
@@ -141,14 +129,13 @@ h3 {
   margin: 1rem;
 }
 
-#playlistlinks{
+#playlistlinks {
   display: flex;
   flex-wrap:wrap;
-  margin-top: 20px;
   justify-content: space-between;
 }
 
-#playlistlinks::after{
+#playlistlinks::after {
   content: "";
   flex: auto;
 }
@@ -165,7 +152,7 @@ h3 {
   margin:5px;
 }
 
-.speciallink{
+.speciallink {
   font-size: 1rem;
   border-radius: 0.5rem; 
   background-color: #555;
@@ -178,7 +165,7 @@ h3 {
   margin:5px;
 }
 
-#playlistlinks div:hover{
+#playlistlinks div:hover {
   border: 1px solid green;
 }
 
@@ -187,6 +174,30 @@ h3 {
   text-decoration: none;
 }
 
-#playergap {
-  margin-top: 150px;
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+.wrapper {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  /*padding: 2rem;*/
+  background-image: linear-gradient(to bottom, var(--BG_COL0), var(--BG_COL1), var(--BG_COL2));
+  background-attachment: fixed;
+
+  /* Make everything unselectable */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+
+  }
+
+.content {
+  flex: 1;
+  overflow: auto;
 }

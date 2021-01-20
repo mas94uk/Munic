@@ -15,8 +15,9 @@
     </style>
 </head>
 
-<body class="unselectable">
-    <div class="topbox">
+<body>
+  <div class="wrapper">
+    <div class="header">
       <img src="__ALBUMART__" align="left" class="picture"/>
       <div class="album">
         <h1><p>__HEADING0__</p></h1>
@@ -25,19 +26,19 @@
       </div>
     </div>
 
-    <div id="playlistlinks">
-    __PLAYLIST_LINKS__
+    <div class="content">
+      <div id="playlistlinks">
+      __PLAYLIST_LINKS__
+      </div>
+
+      <div id="playlist">
+          <ul>
+              __PLAYLIST_ITEMS__
+          </ul>
+      </div>
     </div>
 
-    <div id="playlist">
-        <ul>
-            __PLAYLIST_ITEMS__
-        </ul>
-    </div>
-
-    <div id="playergap"></div>
-
-    <div id="playerdiv">
+    <div class="footer" id="playerdiv">
         <p id="nowplaying">-</p>
         <audio controls id="audioPlayer">
             Sorry, your browser doesn't support html5!
@@ -53,5 +54,6 @@
     <script>
       var playlist = new AudioPlaylist();
     </script>
+  </div>
 </body>
 </html>

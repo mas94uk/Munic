@@ -37,12 +37,12 @@ class AudioPlaylist{
 
         // Generate a list of sources: the original, and transcoded alternatives
         // TODO: Only offer alternate formats if the back end offers transcoding.
-        var source_template = '<source src="__FILE__" type="audio/__MIMETYPE__">'
-        var parts = original_url.split(".") // get the stem and extension
-        var sources = ""
+        var source_template = '<source src="__FILE__" type="audio/__MIMETYPE__">';
+        var parts = original_url.split("."); // get the stem and extension
+        var sources = "";
         if(parts.length == 2) {
-            var stem = parts[0]
-            var original_format = parts[1]
+            var stem = parts[0];
+            var original_format = parts[1];
             // Put the original format first, except if it is FLAC or WAV (because the bandwidth use is too high)
             if(original_format != "flac" && original_format != "wav") {
                 sources = sources + source_template.replace("__FILE__", original_url).replace("__MIMETYPE__", this.mimeType(original_format));
@@ -61,6 +61,7 @@ class AudioPlaylist{
 
         $("."+this.currentClass).removeClass(this.currentClass);
         $("#"+this.playlistId+ " li").eq(liPos).addClass(this.currentClass);
+
         this.trackPos = arrayPos; // update based on array index position
     }
     prevTrack(){
@@ -93,7 +94,6 @@ class AudioPlaylist{
                 this.player.play();
             }
         }
-            
     }
     setLoop(val){
         if(val === true)
@@ -206,4 +206,3 @@ class AudioPlaylist{
 
     }
 }
-
