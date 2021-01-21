@@ -92,6 +92,7 @@ body {
   max-height: 15rem; 
   margin: 0.5rem;
   border-radius: 1.1rem;  
+  transition: all 1s;
 }
 
 .album {
@@ -109,6 +110,7 @@ h1 {
   color: #fff;
   text-align: center;
   margin:1rem;
+  transition: all 1s;
 }
 
 h2 {
@@ -118,6 +120,7 @@ h2 {
   color: #fff;
   text-align: center;
   margin: 1rem;
+  transition: all 1s;
 }
 
 h3 {
@@ -127,6 +130,7 @@ h3 {
   color: #fff;
   text-align: center;
   margin: 1rem;
+  transition: all 1s;
 }
 
 #playlistlinks {

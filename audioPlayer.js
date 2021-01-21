@@ -143,6 +143,22 @@ class AudioPlaylist{
         // All the others (m4a, ogg, wav, flac, wma) happen to be the same as the file extension
         return extension;
     } 
+    manageSizes() {
+        // When we scroll down, or if the vertical height is very low, shrink the header
+        if (this.content.scrollTop > 20 || this.content.clientHeight<300) {
+            // Make everything 2/3 original size
+            this.albumart.style.maxHeight = "10rem";
+            this.header1.style.fontSize = "3.33rem";
+            this.header2.style.fontSize = "2rem";
+            this.header3.style.fontSize = "1.333rem";
+        } else {
+            // Make everything its original size
+            this.albumart.style.maxHeight = "15rem";
+            this.header1.style.fontSize = "5rem";
+            this.header2.style.fontSize = "3rem";
+            this.header3.style.fontSize = "2rem";
+        }
+    }
     constructor(){
         // Set defaults and initialzing player 
         var classObj = this; // store scope for event listeners
@@ -150,6 +166,7 @@ class AudioPlaylist{
         this.playerId = "audioPlayer";
         this.playlistId = "playlist";
         this.currentClass = "current-song";
+        this.content = document.getElementsByClassName("content")[0]; /* the scrollable part including playlist and song links */
         this.playlist = document.getElementById("playlist");
         this.length = this.playlist.getElementsByTagName("li").length;
         this.player = document.getElementById("audioPlayer");
@@ -159,7 +176,11 @@ class AudioPlaylist{
         this.trackOrder = [];
         this.title = document.getElementById("title");
         this.orignalTitleText = title.innerHTML;
+        this.albumart = document.getElementsByClassName("picture")[0];
         this.nowPlaying = document.getElementById("nowplaying");
+        this.header1 = document.getElementsByTagName("h1")[0];
+        this.header2 = document.getElementsByTagName("h2")[0];
+        this.header3 = document.getElementsByTagName("h3")[0];
         for(var i = 0; i < this.length; i++){
             this.trackOrder.push(i);
         }
@@ -167,7 +188,6 @@ class AudioPlaylist{
         // Hide the audio player (and the gap left for it) if there are no tracks
         if(this.length == 0) {
             document.getElementById("playerdiv").style.display = "none";
-            document.getElementById("playergap").style.display = "none";
         }
         
         if(this.shuffle)
@@ -204,5 +224,9 @@ class AudioPlaylist{
             classObj.nowPlaying.innerHTML = nowPlaying;
         });
 
+        // Resize parts when scrolling or resizing, plus once upon loading (now)
+        this.content.onscroll = function() {classObj.manageSizes();};
+        window.onresize = function() {classObj.manageSizes();}
+        this.manageSizes();
     }
 }
