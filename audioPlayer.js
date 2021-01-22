@@ -29,7 +29,6 @@ class AudioPlaylist{
             this.trackOrder[i] = this.trackOrder[j];
             this.trackOrder[j] = temp;
         }
-        return this.trackOrder;
     }
     setTrack(arrayPos){
         var liPos = this.trackOrder[arrayPos]; // convert array index to html index
@@ -59,12 +58,12 @@ class AudioPlaylist{
         this.player.innerHTML = sources;
         this.player.load();
 
-        $("."+this.currentClass).removeClass(this.currentClass);
-        $("#"+this.playlistId+ " li").eq(liPos).addClass(this.currentClass);
-
         this.trackPos = arrayPos; // update based on array index position
     }
     prevTrack(){
+        // Remove the highlight
+        $("."+this.currentClass).removeClass(this.currentClass);
+
         if(this.trackPos == 0)
             this.setTrack(0);
         else
@@ -72,6 +71,9 @@ class AudioPlaylist{
         this.player.play();
     }
     nextTrack(){
+        // Remove the highlight
+        $("."+this.currentClass).removeClass(this.currentClass);
+
         // if track isn't the last track in array of tracks, go to next track
         if(this.trackPos < this.length - 1) {
             this.setTrack(this.trackPos+1);
@@ -119,7 +121,7 @@ class AudioPlaylist{
                 }
                 
                 // jump array to track position of currently playing track
-                this.trackPos =  this.trackOrder.indexOf($("."+this.currentClass).index());
+                this.trackPos = this.trackOrder.indexOf($("."+this.currentClass).index());
             }
             return this.shuffle;
         }
@@ -167,9 +169,9 @@ class AudioPlaylist{
         this.playlistId = "playlist";
         this.currentClass = "current-song";
         this.content = document.getElementsByClassName("content")[0]; /* the scrollable part including playlist and song links */
-        this.playlist = document.getElementById("playlist");
+        this.playlist = document.getElementById(this.playlistId);
         this.length = this.playlist.getElementsByTagName("li").length;
-        this.player = document.getElementById("audioPlayer");
+        this.player = document.getElementById(this.playerId);
         this.autoplay = false;
         this.loop = false;
         this.trackPos = 0;
@@ -217,11 +219,18 @@ class AudioPlaylist{
         this.player.addEventListener("play", function(){
             // Set the title and now-playing.
             // We do this here, rather than in setTrack(), so that it does not happen when the
-            // page loads and nothing is yet playing. 
-            var liPos = classObj.trackOrder[classObj.trackPos]; // convert array index to html index
-            var nowPlaying = $("#"+classObj.playlistId+ " li a").eq(liPos)[0].text;
+            // page loads and nothing is yet playing.
+            var liPos = classObj.trackOrder[classObj.trackPos]; // handle shuffle indices
+            var link = $("#"+classObj.playlistId+ " li a").eq(liPos)[0];            
+            var nowPlaying = link.children[0].innerText;
+            if(link.childElementCount > 1) {
+                nowPlaying = nowPlaying + " (" + link.children[1].innerText + " )";
+            }
             classObj.title.innerHTML = nowPlaying;
             classObj.nowPlaying.innerHTML = nowPlaying;
+
+            // Highlight the currently-playing track
+            $("#"+classObj.playlistId+ " li").eq(liPos).addClass(classObj.currentClass);
         });
 
         // Resize parts when scrolling or resizing, plus once upon loading (now)
