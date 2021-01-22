@@ -205,6 +205,10 @@ class AudioPlaylist{
         // Handle track link clicks
         $("#"+this.playlistId+" li a ").click(function(e){
             e.preventDefault();
+
+            // Remove highlight
+            $("."+classObj.currentClass).removeClass(classObj.currentClass);
+
             // set track based on index of 
             classObj.setTrack(classObj.trackOrder.indexOf($(this).parent().index()));
             classObj.player.play();
@@ -231,6 +235,9 @@ class AudioPlaylist{
 
             // Highlight the currently-playing track
             $("#"+classObj.playlistId+ " li").eq(liPos).addClass(classObj.currentClass);
+
+            // Move the link to the middle of the screen
+            link.scrollIntoView({ behavior: "smooth", block: "center", inline: "center"});
         });
 
         // Resize parts when scrolling or resizing, plus once upon loading (now)
