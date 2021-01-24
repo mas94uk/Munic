@@ -1,38 +1,49 @@
 @import url(https://fonts.googleapis.com/css?family=Exo+2:300i);
 @import url(https://fonts.googleapis.com/css?family=Exo+2:200);
 
-#playlist {
-  text-align: top left;
-}
-
 #playlist ul {
   list-style: none;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
 }
 
+/* This makes the last row left-justify, but has the unpleasant side-effect of breaking the alignment */
+/*#playlist ul::after {
+  content: "";
+  flex: auto;
+} */
+
 #playlist li {
+  width: 550px;
+  height: 50px;
   display: flex;
   align-items:center;
-  height: 100%;
   padding: 0.5rem;
-  padding-left: 3rem;
 }
 
 #playlist img {
-  height: 3rem;
-  width: 3rem;
+  max-height: 3rem;
+  max-width: 3rem;
   object-fit: cover;
   border-radius: 0.3rem;
   margin-right: 1rem;
 }
 
 #playlist a {
-  color:white;
+  color: #eee;
   text-decoration: none;
   font-size: 1.3rem;
+
+  /* For enlargement on hover */
+  transition-duration: 0.1s;
 }
 
 #playlist a:hover {
-  color:green;
+  /* Slight enlargement and brightening */
+  font-size: 1.4rem;
+  color: #fff;
 }
 
 #playlist .current-song a {
@@ -44,19 +55,19 @@
 }
 
 .footer {
-  color: white;
+  color: #eee;
   text-align: center;
   margin: 2rem;
   margin-top: 0;
 }
 
 .footer p {
-  color: white;
+  color: #eee;
   margin-bottom: 10px;
 }
 
 .footer a {
-  color:white;
+  color: #eee;
   padding: 5px;
   text-decoration: none;
   padding-left: 3rem; /* TODO: lay next/prev/shuffle/loop controls out better */
@@ -67,7 +78,7 @@
   margin-right: 2rem;
   margin-bottom: 1rem;
    /*Base font size */
-  font-size: 15px;
+  /*font-size: 15px;*/
 }
 
 body {
@@ -107,7 +118,7 @@ h1 {
   font-size: 5rem;
   font-weight: 550;
   font-style: italic;
-  color: #fff;
+  color: #eee;
   text-align: center;
   margin:1rem;
   transition: all 1s;
@@ -117,7 +128,7 @@ h2 {
   font-size: 3rem;
   font-weight: 200;
   font-style: italic;
-  color: #fff;
+  color: #eee;
   text-align: center;
   margin: 1rem;
   transition: all 1s;
@@ -127,7 +138,7 @@ h3 {
   font-size: 2rem;
   font-weight: 200;
   font-style: italic;
-  color: #fff;
+  color: #eee;
   text-align: center;
   margin: 1rem;
   transition: all 1s;
@@ -135,7 +146,7 @@ h3 {
 
 #playlistlinks {
   display: flex;
-  flex-wrap:wrap;
+  flex-wrap: wrap;
   justify-content: space-between;
 }
 
@@ -145,10 +156,10 @@ h3 {
 }
 
 #playlistlinks div {
-  font-size: 1rem;
+  font-size: 1.3rem;
   border-radius: 0.9rem; 
   background-color: var(--BG_COL1);
-  border: 1px solid white;
+  border: 1px solid #eee;
   padding-top: 4px;
   padding-bottom: 5px;
   padding-left: 10px;
@@ -157,11 +168,11 @@ h3 {
 }
 
 .speciallink {
-  font-size: 1rem;
+  font-size: 1.3rem;
   border-radius: 0.5rem; 
   background-color: #555;
   color: black;
-  border: 1px solid white;
+  border: 1px solid #eee;
   padding-top: 4px;
   padding-bottom: 5px;
   padding-left: 10px;
@@ -174,7 +185,7 @@ h3 {
 }
 
 #playlistlinks a {
-  color:white;
+  color: #eee;
   text-decoration: none;
 }
 
@@ -187,7 +198,6 @@ html, body {
   height: 100%;
   display: flex;
   flex-direction: column;
-  /*padding: 2rem;*/
   background-image: linear-gradient(to bottom, var(--BG_COL0), var(--BG_COL1), var(--BG_COL2));
   background-attachment: fixed;
 
