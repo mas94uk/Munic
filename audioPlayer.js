@@ -8,7 +8,7 @@
         playerId: "audioPlayer",
         playlistId: "playlist",
         currentClass: "current-song"
-        
+
     Methods:
         setLoop
         setShuffle
@@ -16,11 +16,11 @@
         toggleLoop
         prevTrack
         nextTrack
-    
+
     Can access player by .player variable
     example playlist.player.pause();
 */
- 
+
 class AudioPlaylist{
     randomizeOrder(){
         for (var i = this.trackOrder.length - 1; i > 0; i--) {
@@ -119,7 +119,7 @@ class AudioPlaylist{
                 for(var i = 0; i < this.length; i++){
                     this.trackOrder.push(i);
                 }
-                
+
                 // jump array to track position of currently playing track
                 this.trackPos = this.trackOrder.indexOf($("."+this.currentClass).index());
             }
@@ -144,7 +144,7 @@ class AudioPlaylist{
         if(extension=="mp3") return "mpeg";
         // All the others (m4a, ogg, wav, flac, wma) happen to be the same as the file extension
         return extension;
-    } 
+    }
     manageSizes() {
         // When we scroll down, or if the vertical height is very low, shrink the header
         if (this.content.scrollTop > 20 || this.content.clientHeight<300) {
@@ -187,14 +187,14 @@ class AudioPlaylist{
             this.trackOrder.push(i);
         }
 
-        // Hide the audio player (and the gap left for it) if there are no tracks
+        // Hide the audio player footer if there are no tracks
         if(this.length == 0) {
-            document.getElementById("playerdiv").style.display = "none";
+            document.getElementsByClassName("footer")[0].style.display = "none";
         }
-        
+
         if(this.shuffle)
             this.randomizeOrder();
-        
+
         if(this.length > 0) {
             this.setTrack(this.trackPos);
 
@@ -209,11 +209,11 @@ class AudioPlaylist{
             // Remove highlight
             $("."+classObj.currentClass).removeClass(classObj.currentClass);
 
-            // set track based on index of 
+            // set track based on index of the list item in the ranomised order
             classObj.setTrack(classObj.trackOrder.indexOf($(this).parent().index()));
             classObj.player.play();
         });
-        
+
         // Handle end of track
         this.player.addEventListener("ended", function(){
             classObj.nextTrack();
@@ -225,8 +225,9 @@ class AudioPlaylist{
             // We do this here, rather than in setTrack(), so that it does not happen when the
             // page loads and nothing is yet playing.
             var liPos = classObj.trackOrder[classObj.trackPos]; // handle shuffle indices
-            var link = $("#"+classObj.playlistId+ " li a").eq(liPos)[0];            
+            var link = $("#"+classObj.playlistId+ " li a").eq(liPos)[0];
             var nowPlaying = link.children[0].innerText;
+            // TODO Need to check if children[1].innerText is empty
             if(link.childElementCount > 1) {
                 nowPlaying = nowPlaying + " (" + link.children[1].innerText + " )";
             }

@@ -118,8 +118,8 @@ class Transcoder:
                 logging.warning("Transcode finished but destination file not created")
                 return None
 
-        # If we are still transcoding, wait up to 5s for the file to appear
-        for i in range(0,50):
+        # If we are still transcoding, wait up to 10s for the file to appear
+        for i in range(0,100):
             if os.path.exists(self.out_file):
                 return self.out_file
             time.sleep(0.1)
@@ -478,13 +478,14 @@ class Handler(BaseHTTPRequestHandler):
 
             total_sent = 0
             FIRST_CHUNK_SIZE = 131072 # 128kB in first chunk 
-            FOLLOWING_CHUNK_SIZE = 65536  # 64kB at a time
+            TRANSCODING_CHUNK_SIZE = 65536  # 64kB at a time while transcoding
+            TRANSCOMPLETE_CHUNK_SIZE = 131072  # 128kB chunks once transcode has finished
             time.sleep(1)
             try:
                 # While we are still transcoding, send a chunk at a time
                 chunk_size = FIRST_CHUNK_SIZE
                 while not transcoder.transcode_finished():
-                    file_length_remaining = os.fstat(f.fileno())[6] - f.tell()
+                    file_length_remaining = os.fstat(f.fileno()).st_size - f.tell()
                     if file_length_remaining >= chunk_size:
                         data = f.read(chunk_size)
                         length_read = len(data)
@@ -494,20 +495,19 @@ class Handler(BaseHTTPRequestHandler):
                         self.wfile.write("\r\n".encode("utf-8"))
                         self.wfile.flush()
                         total_sent += length_read
-                        chunk_size = FOLLOWING_CHUNK_SIZE
+                        chunk_size = TRANSCODING_CHUNK_SIZE
                     else:
-                        time.sleep(0.1)
+                        time.sleep(0.5)
 
                 # In case this transcode was not one of the "to keep" ones (becuase there were more than
                 # MAX_SIMULTANEOUS_TRANSCODES connections), add it to the completed "to keep" list
                 self.refresh_transcoder(transcoder)
 
                 # Send the rest
-                logging.info("Finished waiting for transcode")
-                file_length = os.fstat(f.fileno())[6]
+                chunk_size = TRANSCOMPLETE_CHUNK_SIZE
                 # While there is file remaining
-                while os.fstat(f.fileno())[6] - f.tell() > 0:
-                    file_remaining = os.fstat(f.fileno())[6] - f.tell()
+                file_remaining = os.fstat(f.fileno()).st_size - f.tell()
+                while file_remaining > 0:
                     length_to_read = min(chunk_size, file_remaining)
                     data = f.read(length_to_read)
                     length_read = len(data)
@@ -516,7 +516,7 @@ class Handler(BaseHTTPRequestHandler):
                     self.wfile.write(data)
                     self.wfile.write("\r\n".encode("utf-8"))
                     total_sent += length_read
-                    chunk_size = FOLLOWING_CHUNK_SIZE
+                    file_remaining = os.fstat(f.fileno()).st_size - f.tell()
 
                 # Send an empty chunk to indicate the end of file
                 self.wfile.write("0\r\n\r\n".encode("utf-8"))

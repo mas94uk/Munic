@@ -16,7 +16,7 @@
 } */
 
 #playlist li {
-  width: 550px;
+  width: 500px;
   height: 50px;
   display: flex;
   align-items:center;
