@@ -308,12 +308,19 @@ class AudioPlaylist{
 
         // Called frequently as a track plays
         this.player1.addEventListener("timeupdate", function() { 
-            // If no track is currently preloaded, and the active player has stopped using the network (i.e. finished loading)
-            if(isNaN(classObj.sparePlayerTrackPos) && classObj.activePlayer.networkState === classObj.activePlayer.NETWORK_IDLE) {
+            // If no track is currently preloaded, and the active player has started player and has stopped using the network (i.e. finished loading)
+            if(isNaN(classObj.sparePlayerTrackPos) && classObj.activePlayer.currentTime > 0 && classObj.activePlayer.networkState === classObj.activePlayer.NETWORK_IDLE) {
                 // The playing track has loaded. Start pre-loading the next track.
                 classObj.preloadTrack(classObj.trackPos+1);
             }
-        })
+        });
+        this.player2.addEventListener("timeupdate", function() { 
+            // If no track is currently preloaded, and the active player has started player and has stopped using the network (i.e. finished loading)
+            if(isNaN(classObj.sparePlayerTrackPos) && classObj.activePlayer.currentTime > 0 && classObj.activePlayer.networkState === classObj.activePlayer.NETWORK_IDLE) {
+                // The playing track has loaded. Start pre-loading the next track.
+                classObj.preloadTrack(classObj.trackPos+1);
+            }
+        });
 
         // Resize parts when scrolling or resizing, plus once upon loading (now)
         this.content.onscroll = function() {classObj.manageSizes();};
