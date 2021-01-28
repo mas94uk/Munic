@@ -50,7 +50,11 @@
   color:yellow;
 }
 
-#audioPlayer {
+#audioPlayer1 {
+  width: 100%;
+}
+
+#audioPlayer2 {
   width: 100%;
 }
 

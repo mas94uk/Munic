@@ -22,6 +22,27 @@
 */
 
 class AudioPlaylist{
+    onPlay(){
+        // Set the title and now-playing.
+        // We do this here, rather than in setTrack(), so that it does not happen when the
+        // page loads and nothing is yet playing.
+        var listPos = this.trackOrder[this.trackPos]; // handle shuffle indices
+        var link = $("#"+this.playlistId+ " li a").eq(listPos)[0];
+        var nowPlaying = link.children[0].innerText;
+        // TODO Need to check if children[1].innerText is empty, and strip leading/trailing whitespace
+        if(link.childElementCount > 1) {
+            nowPlaying = nowPlaying + " (" + link.children[1].innerText + " )";
+        }
+        this.title.innerHTML = nowPlaying;
+        this.nowPlaying.innerHTML = nowPlaying;
+
+        // Highlight the currently-playing track
+        $("#"+this.playlistId+ " li").eq(listPos).addClass(this.currentClass);
+
+        // Move the link to the middle of the screen
+        link.scrollIntoView({ behavior: "smooth", block: "center", inline: "center"});
+    }
+
     randomizeOrder(){
         for (var i = this.trackOrder.length - 1; i > 0; i--) {
             var j = Math.floor(Math.random() * (i + 1));
@@ -30,9 +51,9 @@ class AudioPlaylist{
             this.trackOrder[j] = temp;
         }
     }
-    setTrack(arrayPos){
-        var liPos = this.trackOrder[arrayPos]; // convert array index to html index
-        var original_url = $("#"+this.playlistId+ " li a").eq(liPos).attr("href");
+
+    getSources(listPos) {
+        var original_url = $("#"+this.playlistId+ " li a").eq(listPos).attr("href");
 
         // Generate a list of sources: the original, and transcoded alternatives
         // TODO: Only offer alternate formats if the back end offers transcoding.
@@ -55,11 +76,51 @@ class AudioPlaylist{
                 sources = sources + source_template.replace("__FILE__", stem + ".mp3").replace("__MIMETYPE__", "mpeg");
             }
         }
-        this.player.innerHTML = sources;
-        this.player.load();
 
-        this.trackPos = arrayPos; // update based on array index position
+        return sources;
     }
+
+    setTrack(arrayPos){
+        // If the spare player is already loaded with the requested track
+        if(arrayPos == this.sparePlayerTrackPos) {
+            // Stop the current player
+            this.activePlayer.pause();
+            this.activePlayer.innerHTML = "";
+
+            // Make the spare player the active one and the active one the spare
+            var temp = this.activePlayer;
+            this.activePlayer = this.sparePlayer;
+            this.sparePlayer = temp;
+
+            this.activePlayer.controls = true;
+            this.sparePlayer.controls = false;
+        } else {
+            // convert array index to list index
+            var listPos = this.trackOrder[arrayPos];
+
+            var sources = this.getSources(listPos);
+            this.activePlayer.innerHTML = sources;
+            this.activePlayer.load();
+        }
+
+        // Update the record of the currently-playing track
+        this.trackPos = arrayPos; // update based on array index position
+
+        // Invalidate the pre-loaded track
+        this.sparePlayerTrackPos = NaN;
+    }
+
+    preloadTrack(arrayPos) {
+        // convert array index to list index
+        var listPos = this.trackOrder[arrayPos];
+
+        var sources = this.getSources(listPos);
+        this.sparePlayer.innerHTML = sources;
+        this.sparePlayer.load();
+
+        this.sparePlayerTrackPos = arrayPos;
+    }
+
     prevTrack(){
         // Remove the highlight
         $("."+this.currentClass).removeClass(this.currentClass);
@@ -68,8 +129,9 @@ class AudioPlaylist{
             this.setTrack(0);
         else
             this.setTrack(this.trackPos - 1);
-        this.player.play();
+        this.activePlayer.play();
     }
+
     nextTrack(){
         // Remove the highlight
         $("."+this.currentClass).removeClass(this.currentClass);
@@ -77,7 +139,7 @@ class AudioPlaylist{
         // if track isn't the last track in array of tracks, go to next track
         if(this.trackPos < this.length - 1) {
             this.setTrack(this.trackPos+1);
-            this.player.play();
+            this.activePlayer.play();
         } else {
             // We have reached the end.
             // Reshuffle for next time
@@ -93,10 +155,11 @@ class AudioPlaylist{
 
             if(this.loop)
             {
-                this.player.play();
+                this.activePlayer.play();
             }
         }
     }
+
     setLoop(val){
         if(val === true)
             this.loop = true;
@@ -104,6 +167,7 @@ class AudioPlaylist{
             this.loop = false;
         return this.loop;
     }
+
     setShuffle(val){
         if(val == this.shuffle) // if no change
             return val;
@@ -126,6 +190,7 @@ class AudioPlaylist{
             return this.shuffle;
         }
     }
+
     toggleShuffle(){
         if(this.shuffle === true)
             this.setShuffle(false);
@@ -133,6 +198,7 @@ class AudioPlaylist{
             this.setShuffle(true);
         return this.shuffle;
     }
+
     toggleLoop(){
         if(this.loop === true)
             this.setLoop(false);
@@ -140,11 +206,13 @@ class AudioPlaylist{
             this.setLoop(true);
         return this.loop;
     }
+
     mimeType(extension){
         if(extension=="mp3") return "mpeg";
         // All the others (m4a, ogg, wav, flac, wma) happen to be the same as the file extension
         return extension;
     }
+
     manageSizes() {
         // When we scroll down, or if the vertical height is very low, shrink the header
         if (this.content.scrollTop > 20 || this.content.clientHeight<300) {
@@ -161,17 +229,18 @@ class AudioPlaylist{
             this.header3.style.fontSize = "2rem";
         }
     }
+
     constructor(){
         // Set defaults and initialzing player 
         var classObj = this; // store scope for event listeners
         this.shuffle = false;
-        this.playerId = "audioPlayer";
         this.playlistId = "playlist";
         this.currentClass = "current-song";
         this.content = document.getElementsByClassName("content")[0]; /* the scrollable part including playlist and song links */
         this.playlist = document.getElementById(this.playlistId);
         this.length = this.playlist.getElementsByTagName("li").length;
-        this.player = document.getElementById(this.playerId);
+        this.player1 = document.getElementById("audioPlayer1");
+        this.player2 = document.getElementById("audioPlayer2");
         this.autoplay = false;
         this.loop = false;
         this.trackPos = 0;
@@ -187,6 +256,13 @@ class AudioPlaylist{
             this.trackOrder.push(i);
         }
 
+        // At startup, player1 is the "active" one, player2 the spare
+        this.activePlayer = this.player1;
+        this.sparePlayer = this.player2;
+
+        // No track is pre-loaded on the spare player
+        this.sparePlayerTrackPos = NaN;
+
         // Hide the audio player footer if there are no tracks
         if(this.length == 0) {
             document.getElementsByClassName("footer")[0].style.display = "none";
@@ -199,7 +275,7 @@ class AudioPlaylist{
             this.setTrack(this.trackPos);
 
             if(this.autoplay)
-                this.player.play();
+                this.activePlayer.play();
         }
 
         // Handle track link clicks
@@ -211,35 +287,33 @@ class AudioPlaylist{
 
             // set track based on index of the list item in the ranomised order
             classObj.setTrack(classObj.trackOrder.indexOf($(this).parent().index()));
-            classObj.player.play();
+            classObj.activePlayer.play();
         });
 
         // Handle end of track
-        this.player.addEventListener("ended", function(){
+        this.player1.addEventListener("ended", function(){
+            classObj.nextTrack();
+        });
+        this.player2.addEventListener("ended", function(){
             classObj.nextTrack();
         });
 
         // Called when a track starts to play
-        this.player.addEventListener("play", function(){
-            // Set the title and now-playing.
-            // We do this here, rather than in setTrack(), so that it does not happen when the
-            // page loads and nothing is yet playing.
-            var liPos = classObj.trackOrder[classObj.trackPos]; // handle shuffle indices
-            var link = $("#"+classObj.playlistId+ " li a").eq(liPos)[0];
-            var nowPlaying = link.children[0].innerText;
-            // TODO Need to check if children[1].innerText is empty
-            if(link.childElementCount > 1) {
-                nowPlaying = nowPlaying + " (" + link.children[1].innerText + " )";
-            }
-            classObj.title.innerHTML = nowPlaying;
-            classObj.nowPlaying.innerHTML = nowPlaying;
-
-            // Highlight the currently-playing track
-            $("#"+classObj.playlistId+ " li").eq(liPos).addClass(classObj.currentClass);
-
-            // Move the link to the middle of the screen
-            link.scrollIntoView({ behavior: "smooth", block: "center", inline: "center"});
+        this.player1.addEventListener("play", function(){
+            classObj.onPlay();
         });
+        this.player2.addEventListener("play", function(){
+            classObj.onPlay();
+        });
+
+        // Called frequently as a track plays
+        this.player1.addEventListener("timeupdate", function() { 
+            // If no track is currently preloaded, and the active player has stopped using the network (i.e. finished loading)
+            if(isNaN(classObj.sparePlayerTrackPos) && classObj.activePlayer.networkState === classObj.activePlayer.NETWORK_IDLE) {
+                // The playing track has loaded. Start pre-loading the next track.
+                classObj.preloadTrack(classObj.trackPos+1);
+            }
+        })
 
         // Resize parts when scrolling or resizing, plus once upon loading (now)
         this.content.onscroll = function() {classObj.manageSizes();};
