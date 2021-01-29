@@ -110,15 +110,22 @@ class AudioPlaylist{
         this.sparePlayerTrackPos = NaN;
     }
 
-    preloadTrack(arrayPos) {
-        // convert array index to list index
-        var listPos = this.trackOrder[arrayPos];
+    preloadNextTrack() {
+        // if track isn't the last track in array of tracks, preload the next track
+        if(this.trackPos < this.length - 1) {
+            // convert array index to list index
+            var listPos = this.trackOrder[this.trackPos + 1];
 
-        var sources = this.getSources(listPos);
-        this.sparePlayer.innerHTML = sources;
-        this.sparePlayer.load();
+            var sources = this.getSources(listPos);
+            this.sparePlayer.innerHTML = sources;
+            this.sparePlayer.load();
 
-        this.sparePlayerTrackPos = arrayPos;
+            this.sparePlayerTrackPos = this.trackPos + 1;
+        }
+        else {
+            // Don't preload at the end of the sequence (because it too complicated to bother)
+            this.sparePlayerTrackPos = -1;
+        }
     }
 
     prevTrack(){
@@ -153,8 +160,7 @@ class AudioPlaylist{
             this.title.innerHTML = this.orignalTitleText;
             this.nowPlaying.innerHTML = "-"
 
-            if(this.loop)
-            {
+            if(this.loop) {
                 this.activePlayer.play();
             }
         }
@@ -306,19 +312,17 @@ class AudioPlaylist{
             classObj.onPlay();
         });
 
-        // Called frequently as a track plays
-        this.player1.addEventListener("timeupdate", function() { 
-            // If no track is currently preloaded, and the active player has started player and has stopped using the network (i.e. finished loading)
-            if(isNaN(classObj.sparePlayerTrackPos) && classObj.activePlayer.currentTime > 0 && classObj.activePlayer.networkState === classObj.activePlayer.NETWORK_IDLE) {
-                // The playing track has loaded. Start pre-loading the next track.
-                classObj.preloadTrack(classObj.trackPos+1);
+        // When loading pauses on the active player (e.g. because enough if buffered), preload the next track
+        this.player1.addEventListener("suspend", function() { 
+            // If no track is currently preloaded, pre-load the next track
+            if(isNaN(classObj.sparePlayerTrackPos) && classObj.player1.currentTime > 0) {
+                classObj.preloadNextTrack();
             }
         });
-        this.player2.addEventListener("timeupdate", function() { 
-            // If no track is currently preloaded, and the active player has started player and has stopped using the network (i.e. finished loading)
-            if(isNaN(classObj.sparePlayerTrackPos) && classObj.activePlayer.currentTime > 0 && classObj.activePlayer.networkState === classObj.activePlayer.NETWORK_IDLE) {
-                // The playing track has loaded. Start pre-loading the next track.
-                classObj.preloadTrack(classObj.trackPos+1);
+        this.player2.addEventListener("suspend", function() { 
+            // If no track is currently preloaded, pre-load the next track
+            if(isNaN(classObj.sparePlayerTrackPos) && classObj.player2.currentTime > 0) {
+                classObj.preloadNextTrack();
             }
         });
 
