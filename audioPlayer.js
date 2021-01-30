@@ -269,6 +269,9 @@ class AudioPlaylist{
         // No track is pre-loaded on the spare player
         this.sparePlayerTrackPos = NaN;
 
+        // Start the volume at half
+        this.activePlayer.volume = 0.5;
+
         // Hide the audio player footer if there are no tracks
         if(this.length == 0) {
             document.getElementsByClassName("footer")[0].style.display = "none";
@@ -324,6 +327,16 @@ class AudioPlaylist{
             if(isNaN(classObj.sparePlayerTrackPos) && classObj.player2.currentTime > 0) {
                 classObj.preloadNextTrack();
             }
+        });
+
+        // Sync volume changes and mute status between the two players
+        this.player1.addEventListener("volumechange", function() {
+            if(classObj.player2.volume != classObj.player1.volume) classObj.player2.volume = classObj.player1.volume;
+            if(classObj.player2.muted != classObj.player1.muted) classObj.player2.muted = classObj.player1.muted;
+        });
+        this.player2.addEventListener("volumechange", function() {
+            if(classObj.player1.volume != classObj.player2.volume) classObj.player1.volume = classObj.player2.volume;
+            if(classObj.player1.muted != classObj.player2.muted) classObj.player1.muted = classObj.player2.muted;
         });
 
         // Resize parts when scrolling or resizing, plus once upon loading (now)
