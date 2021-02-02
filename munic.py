@@ -6,6 +6,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingMixIn
 import threading
 from urllib import parse as urllibparse
+import base64
 import sys
 import os
 import unicodedata
@@ -46,6 +47,11 @@ running_transcoders_to_keep = []
 
 # The completed transcode jobs we want to keep (MAX_COMPLETED_TRANSCODES)
 completed_transcoders_to_keep = []
+
+# The set of allowed users and their passwords - or None for no auth
+# TODO Make this configurable
+users = None
+users = { "user":"pass", "user2":"pass2" }
 
 class Transcoder:
     # Index for the next transcode temp file
@@ -138,7 +144,30 @@ class Handler(BaseHTTPRequestHandler):
         super(Handler, self).__init__(request, client_address, server)
 
     def do_GET(self):
-        logging.info("GET path: {} on thread {}\n".format(self.path, threading.get_ident()))
+        logging.info("GET path: {} on thread {}".format(self.path, threading.get_ident()))
+
+        # Check the authorisation.
+        if users:
+            auth_header = self.headers.get("Authorization")
+
+            # If there was no auth header, request authorisation
+            if not auth_header or not auth_header.startswith("Basic "):
+                logging.info("No (valid) auth header")
+                self.send_auth_request()
+
+            # The string is expected to be something like
+            #  Basic dXNlcjpwYXNz
+            # The latter part base64 decodes to user:pass
+            logging.debug("Auth: " + auth_header)
+            b64 = auth_header.split()[1]
+            decoded = base64.b64decode(b64).decode("utf-8")
+            user,pw = decoded.split(":")
+
+            if user not in users or users[user] != pw:
+                logging.warning("Invalid user/pass for user %s" % user)
+                self.send_auth_request()
+
+        # The user was recognised and the password was correct
 
         name = self.path
         name = urllibparse.unquote(name)
@@ -341,7 +370,13 @@ class Handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 return
 
-        logging.info("GET completed")
+        logging.info("GET completed: {} on thread {}".format(self.path, threading.get_ident()))
+
+    def send_auth_request(self):
+        self.send_response(401)
+        self.send_header('WWW-Authenticate', 'Basic realm=\"Munic\"')
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
 
     def send_html(self, htmlstr):
         "Simply sends htmlstr with status 200 and the correct content-type and content-length."
