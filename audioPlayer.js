@@ -108,6 +108,9 @@ class AudioPlaylist{
 
         // Invalidate the pre-loaded track
         this.sparePlayerTrackPos = NaN;
+
+        // Focus the active player so e.g. space does play/pause
+        this.activePlayer.focus()
     }
 
     preloadNextTrack() {
