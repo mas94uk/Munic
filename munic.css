@@ -58,6 +58,15 @@
   width: 100%;
 }
 
+
+#audioPlayer1:focus { 
+  outline: none; 
+}
+
+#audioPlayer2:focus { 
+  outline: none; 
+}
+
 .footer {
   color: #eee;
   text-align: center;
