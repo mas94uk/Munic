@@ -1,26 +1,5 @@
 /* Javascript audio player - based on github.com:NelsWebDev/BetterAudioPlaylist.git */
 
-/*
-    Default constructor configuration:
-        autoplay: false,
-        shuffle: false,
-        loop: false,
-        playerId: "audioPlayer",
-        playlistId: "playlist",
-        currentClass: "current-song"
-
-    Methods:
-        setLoop
-        setShuffle
-        toggleShuffle
-        toggleLoop
-        prevTrack
-        nextTrack
-
-    Can access player by .player variable
-    example playlist.player.pause();
-*/
-
 class AudioPlaylist{
     onPlay(){
         // Set the title and now-playing.
@@ -29,7 +8,6 @@ class AudioPlaylist{
         var listPos = this.trackOrder[this.trackPos]; // handle shuffle indices
         var link = $("#"+this.playlistId+ " li a").eq(listPos)[0];
         var nowPlaying = link.children[0].innerText.trim();
-        // TODO Need to check if children[1].innerText is empty, and strip leading/trailing whitespace
         if(link.childElementCount > 1 && link.children[1].innerText.length > 0) {
             nowPlaying = nowPlaying + " (" + link.children[1].innerText.trim() + ")";
         }
@@ -81,6 +59,9 @@ class AudioPlaylist{
     }
 
     setTrack(arrayPos){
+        // Remove the highlight
+        $("."+this.currentClass).removeClass(this.currentClass);
+
         // If the spare player is already loaded with the requested track
         if(arrayPos == this.sparePlayerTrackPos) {
             // Stop the current player
@@ -132,9 +113,6 @@ class AudioPlaylist{
     }
 
     prevTrack(){
-        // Remove the highlight
-        $("."+this.currentClass).removeClass(this.currentClass);
-
         if(this.trackPos == 0)
             this.setTrack(0);
         else
@@ -143,9 +121,6 @@ class AudioPlaylist{
     }
 
     nextTrack(){
-        // Remove the highlight
-        $("."+this.currentClass).removeClass(this.currentClass);
-
         // if track isn't the last track in array of tracks, go to next track
         if(this.trackPos < this.length - 1) {
             this.setTrack(this.trackPos+1);
@@ -205,6 +180,8 @@ class AudioPlaylist{
             this.setShuffle(false);
         else
             this.setShuffle(true);
+
+        this.setTrack(0);
         return this.shuffle;
     }
 
@@ -250,7 +227,6 @@ class AudioPlaylist{
         this.length = this.playlist.getElementsByTagName("li").length;
         this.player1 = document.getElementById("audioPlayer1");
         this.player2 = document.getElementById("audioPlayer2");
-        this.autoplay = false;
         this.loop = false;
         this.trackPos = 0;
         this.trackOrder = [];
@@ -285,17 +261,11 @@ class AudioPlaylist{
 
         if(this.length > 0) {
             this.setTrack(this.trackPos);
-
-            if(this.autoplay)
-                this.activePlayer.play();
         }
 
         // Handle track link clicks
         $("#"+this.playlistId+" li a ").click(function(e){
             e.preventDefault();
-
-            // Remove highlight
-            $("."+classObj.currentClass).removeClass(classObj.currentClass);
 
             // set track based on index of the list item in the ranomised order
             classObj.setTrack(classObj.trackOrder.indexOf($(this).parent().index()));
