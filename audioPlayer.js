@@ -28,10 +28,10 @@ class AudioPlaylist{
         // page loads and nothing is yet playing.
         var listPos = this.trackOrder[this.trackPos]; // handle shuffle indices
         var link = $("#"+this.playlistId+ " li a").eq(listPos)[0];
-        var nowPlaying = link.children[0].innerText;
+        var nowPlaying = link.children[0].innerText.trim();
         // TODO Need to check if children[1].innerText is empty, and strip leading/trailing whitespace
-        if(link.childElementCount > 1) {
-            nowPlaying = nowPlaying + " (" + link.children[1].innerText + " )";
+        if(link.childElementCount > 1 && link.children[1].innerText.length > 0) {
+            nowPlaying = nowPlaying + " (" + link.children[1].innerText.trim() + ")";
         }
         this.title.innerHTML = nowPlaying;
         this.nowPlaying.innerHTML = nowPlaying;
