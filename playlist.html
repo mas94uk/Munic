@@ -18,11 +18,19 @@
 <body>
   <div class="wrapper">
     <div class="header">
-      <img src="__ALBUMART__" align="left" class="picture"/>
+      <div>
+        <img src="__ALBUMART__" align="left" class="picture"/>
+      </div>
       <div class="album">
         <h1><p>__HEADING0__</p></h1>
         <h2><p>__HEADING1__</p></h2>
         <h3><p>__HEADING2__</p></h3>
+      </div>
+      <div id="controls">
+        <a href="#" onclick="playlist.prevTrack();">⏮️</a>
+        <a href="#" onclick="playlist.nextTrack();">⏭️</a>
+        <a id="shuffle" href="#" onclick="playlist.toggleShuffle();">🔀</a>
+        <a id="loop" href="#" onclick="playlist.toggleLoop();">🔁</a>
       </div>
     </div>
 
@@ -46,10 +54,6 @@
         <audio id="audioPlayer2">
             Sorry, your browser doesn't support html5!
         </audio>
-        <a href="#" onclick="playlist.prevTrack();">Prev Track</a>
-        <a href="#" onclick="playlist.nextTrack();">Next Track</a>
-        <a href="#" onclick="playlist.toggleShuffle();">Toggle Shuffle</a>
-        <a href="#" onclick="playlist.toggleLoop();">Toggle Loop</a>
     </div>
 
     <script src="https://code.jquery.com/jquery-2.2.0.js"></script>

@@ -83,15 +83,13 @@
   color: #eee;
   padding: 5px;
   text-decoration: none;
-  padding-left: 3rem; /* TODO: lay next/prev/shuffle/loop controls out better */
+  padding-left: 3rem;
 }
 
 .content {
   margin-left: 2rem;
   margin-right: 2rem;
   margin-bottom: 1rem;
-   /*Base font size */
-  /*font-size: 15px;*/
 }
 
 body {
@@ -121,6 +119,28 @@ body {
 
 .album {
   flex: 1;
+}
+
+#controls {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  margin-right: 1rem;
+  margin-top: 0.1rem;
+  margin-bottom: 0.1rem;
+  font-size: 3.5rem;
+  width: 11rem;
+}
+
+#controls a {
+  text-decoration: none;
+  margin: 0.1rem;
+  padding: 0.1rem;
+}
+
+#controls .selected {
+  background-color: #eee;
+  border-radius: 0.5rem;
 }
 
 p {

@@ -145,6 +145,12 @@ class AudioPlaylist{
     }
 
     setLoop(val){
+        // Add/remove the loop highlight
+        if(val)
+            $("#loop").addClass(this.selectedButtonClass);
+        else
+            $("#loop").removeClass(this.selectedButtonClass);
+
         if(val === true)
             this.loop = true;
         else
@@ -153,6 +159,12 @@ class AudioPlaylist{
     }
 
     setShuffle(val){
+        // Add/remove the shuffle highlight
+        if(val)
+            $("#shuffle").addClass(this.selectedButtonClass);
+        else
+            $("#shuffle").removeClass(this.selectedButtonClass);
+
         if(val == this.shuffle) // if no change
             return val;
         else{
@@ -222,6 +234,7 @@ class AudioPlaylist{
         this.shuffle = false;
         this.playlistId = "playlist";
         this.currentClass = "current-song";
+        this.selectedButtonClass = "selected";
         this.content = document.getElementsByClassName("content")[0]; /* the scrollable part including playlist and song links */
         this.playlist = document.getElementById(this.playlistId);
         this.length = this.playlist.getElementsByTagName("li").length;
@@ -237,6 +250,8 @@ class AudioPlaylist{
         this.header1 = document.getElementsByTagName("h1")[0];
         this.header2 = document.getElementsByTagName("h2")[0];
         this.header3 = document.getElementsByTagName("h3")[0];
+        this.shuffleButton = document.getElementById("shuffle");
+        this.loopButton = document.getElementById("loop");
         for(var i = 0; i < this.length; i++){
             this.trackOrder.push(i);
         }
