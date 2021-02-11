@@ -266,9 +266,10 @@ class AudioPlaylist{
         // Start the volume at half
         this.activePlayer.volume = 0.5;
 
-        // Hide the audio player footer if there are no tracks
+        // Hide the audio player footer and the play controls if there are no tracks
         if(this.length == 0) {
             document.getElementsByClassName("footer")[0].style.display = "none";
+            document.getElementById("controls").style.display = "none";
         }
 
         if(this.shuffle)
