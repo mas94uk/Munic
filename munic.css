@@ -1,146 +1,15 @@
 @import url(https://fonts.googleapis.com/css?family=Exo+2:300i);
 @import url(https://fonts.googleapis.com/css?family=Exo+2:200);
 
-#playlist ul {
-  list-style: none;
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  justify-content: space-between;
-}
-
-/* This makes the last row left-justify, but has the unpleasant side-effect of breaking the alignment */
-/*#playlist ul::after {
-  content: "";
-  flex: auto;
-} */
-
-#playlist li {
-  width: 500px;
-  height: 50px;
-  display: flex;
-  align-items:center;
-  padding: 0.5rem;
-}
-
-#playlist img {
-  max-height: 3rem;
-  max-width: 3rem;
-  object-fit: cover;
-  border-radius: 0.3rem;
-  margin-right: 1rem;
-}
-
-#playlist a {
-  color: #eee;
-  text-decoration: none;
-  font-size: 1.3rem;
-
-  /* For enlargement on hover */
-  transition-duration: 0.1s;
-}
-
-#playlist a:hover {
-  /* Slight enlargement and brightening */
-  font-size: 1.4rem;
-  color: #fff;
-}
-
-#playlist .current-song a {
-  color:yellow;
-}
-
-#audioPlayer1 {
-  width: 100%;
-}
-
-#audioPlayer2 {
-  width: 100%;
-}
-
-
-#audioPlayer1:focus { 
-  outline: none; 
-}
-
-#audioPlayer2:focus { 
-  outline: none; 
-}
-
-.footer {
-  color: #eee;
-  text-align: center;
-  margin: 2rem;
-  margin-top: 0;
-}
-
-.footer p {
-  color: #eee;
-  margin-bottom: 10px;
-}
-
-.footer a {
-  color: #eee;
-  padding: 5px;
-  text-decoration: none;
-  padding-left: 3rem;
-}
-
-.content {
-  margin-left: 2rem;
-  margin-right: 2rem;
-  margin-bottom: 1rem;
+html, body {
+  height: 100%;
+  margin: 0;
 }
 
 body {
   font-family: 'Exo 2', sans-serif;
   justify-content: center;
   align-items: center;  
-}
-
-.header {
-  margin: 2rem;
-  display: flex;
-  align-items: center;
-  border: 0.4rem solid #fff;
-  border-radius: 2rem;
-  width: 100%
-  justify-content: center;
-  background-image: linear-gradient(to bottom right, var(--BG_COL0), var(--BG_COL1), var(--BG_COL2));
-}
-
-.picture {
-  align-self: stretch;
-  max-height: 15rem; 
-  margin: 0.5rem;
-  border-radius: 1.1rem;  
-  transition: all 1s;
-}
-
-.album {
-  flex: 1;
-}
-
-#controls {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  margin-right: 1rem;
-  margin-top: 0.1rem;
-  margin-bottom: 0.1rem;
-  font-size: 3.5rem;
-  width: 11rem;
-}
-
-#controls a {
-  text-decoration: none;
-  margin: 0.1rem;
-  padding: 0.1rem;
-}
-
-#controls .selected {
-  background-color: #eee;
-  border-radius: 0.5rem;
 }
 
 p {
@@ -177,6 +46,83 @@ h3 {
   transition: all 1s;
 }
 
+.wrapper {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-image: linear-gradient(to bottom, var(--BG_COL0), var(--BG_COL1), var(--BG_COL2));
+  background-attachment: fixed;
+
+  /* Make everything unselectable */
+  user-select: none;
+}
+
+.header {
+  margin: 2rem;
+  display: flex;
+  align-items: center;
+  border: 0.4rem solid #fff;
+  border-radius: 2rem;
+  width: 100%
+  justify-content: center;
+  background-image: linear-gradient(to bottom right, var(--BG_COL0), var(--BG_COL1), var(--BG_COL2));
+}
+
+.picture {
+  align-self: stretch;
+  max-height: 15rem; 
+  margin: 0.5rem;
+  border-radius: 1.1rem;  
+  transition: all 1s;
+}
+
+.headings {
+  flex: 1;
+}
+
+#controls {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  margin-right: 1rem;
+  margin-top: 0.1rem;
+  margin-bottom: 0.1rem;
+  font-size: 3.5rem;
+  width: 11rem;
+}
+
+#controls a {
+  text-decoration: none;
+  margin: 0.1rem;
+  padding: 0.1rem;
+}
+
+#controls .selected {
+  background-color: #eee;
+  border-radius: 0.5rem;
+}
+
+.content {
+  margin-left: 2rem;
+  margin-right: 2rem;
+  margin-bottom: 1rem;
+  flex: 1;
+  overflow: auto;
+}
+
+.speciallink {
+  font-size: 1.3rem;
+  border-radius: 0.5rem; 
+  background-color: #555;
+  color: black;
+  border: 1px solid #eee;
+  padding-top: 4px;
+  padding-bottom: 5px;
+  padding-left: 10px;
+  padding-right: 10px;
+  margin:5px;
+}
+
 #playlistlinks {
   display: flex;
   flex-wrap: wrap;
@@ -200,18 +146,6 @@ h3 {
   margin:5px;
 }
 
-.speciallink {
-  font-size: 1.3rem;
-  border-radius: 0.5rem; 
-  background-color: #555;
-  color: black;
-  border: 1px solid #eee;
-  padding-top: 4px;
-  padding-bottom: 5px;
-  padding-left: 10px;
-  padding-right: 10px;
-  margin:5px;
-}
 
 #playlistlinks div:hover {
   border: 1px solid green;
@@ -222,29 +156,88 @@ h3 {
   text-decoration: none;
 }
 
-html, body {
-  height: 100%;
-  margin: 0;
-}
-
-.wrapper {
-  height: 100%;
+#playlist ul {
+  list-style: none;
   display: flex;
-  flex-direction: column;
-  background-image: linear-gradient(to bottom, var(--BG_COL0), var(--BG_COL1), var(--BG_COL2));
-  background-attachment: fixed;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
 
-  /* Make everything unselectable */
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  -khtml-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-
-  }
-
-.content {
-  flex: 1;
-  overflow: auto;
 }
+
+#playlist ul::after {
+  content: "";
+  width: 500px;
+  padding: 0.5rem;
+} 
+
+#playlist li {
+  width: 500px;
+  height: 50px;
+  display: flex;
+  align-items:center;
+  padding: 0.5rem;
+}
+
+#playlist img {
+  max-height: 3rem;
+  max-width: 3rem;
+  object-fit: cover;
+  border-radius: 0.3rem;
+  margin-right: 1rem;
+}
+
+#playlist a {
+  color: #eee;
+  text-decoration: none;
+  font-size: 1.3rem;
+
+  /* For enlargement on hover */
+  transition-duration: 0.1s;
+}
+
+#playlist a:hover {
+  /* Slight enlargement and brightening */
+  font-size: 1.4rem;
+  color: #fff;
+}
+
+#playlist .current-song a {
+  color:yellow;
+}
+
+.footer {
+  color: #eee;
+  text-align: center;
+  margin: 2rem;
+  margin-top: 0;
+}
+
+.footer p {
+  color: #eee;
+  margin-bottom: 10px;
+}
+
+.footer a {
+  color: #eee;
+  padding: 5px;
+  text-decoration: none;
+  padding-left: 3rem;
+}
+
+#audioPlayer1 {
+  width: 100%;
+}
+
+#audioPlayer2 {
+  width: 100%;
+}
+
+#audioPlayer1:focus { 
+  outline: none; 
+}
+
+#audioPlayer2:focus { 
+  outline: none; 
+}
+
