@@ -242,7 +242,7 @@ class Handler(BaseHTTPRequestHandler):
                 for dir_name in dir_names:
                     display_name = dirs[dir_name]["display_name"]
                     link = dir_name + "/*"  # Include '*' to take us to the playlist
-                    playlist_link = """<div><p><a href="__LINK__">__NAME__</a></p></div>""".replace("__LINK__", link).replace("__NAME__", display_name)
+                    playlist_link = """<a href="__LINK__"><div><p>__NAME__</p></div></a>""".replace("__LINK__", link).replace("__NAME__", display_name)
                     playlist_links = playlist_links + playlist_link
 
             # Drop the links into the html document

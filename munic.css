@@ -95,11 +95,16 @@ h3 {
   text-decoration: none;
   margin: 0.1rem;
   padding: 0.1rem;
+  transition: 0.2s ease-out;
+  border-radius: 0.5rem;
+}
+
+#controls a:hover {
+  background-color: #aaa;
 }
 
 #controls .selected {
   background-color: #eee;
-  border-radius: 0.5rem;
 }
 
 .content {
@@ -109,7 +114,6 @@ h3 {
   flex: 1;
   overflow: auto;
 }
-
 
 .playlistlinks {
   display: flex;
@@ -132,8 +136,8 @@ h3 {
   padding-left: 10px;
   padding-right: 10px;
   margin:7px;
+  transition: 0.2s ease-out;
 }
-
 
 .playlistlinks div:hover {
   border: 1px solid green;
@@ -142,11 +146,20 @@ h3 {
 .playlistlinks a {
   color: #eee;
   text-decoration: none;
+  outline: none;
+}
+
+.playlistlinks a:hover {
+  color: #fff;
 }
 
 #speciallink {
   border-radius: 0.7rem; 
   border: 2px solid #eee;
+}
+
+#speciallink:hover {
+  border: 2px solid green;
 }
 
 #playlist ul {
@@ -155,7 +168,6 @@ h3 {
   flex-direction: row;
   flex-wrap: wrap;
   justify-content: space-between;
-
 }
 
 #playlist ul::after {
@@ -186,7 +198,7 @@ h3 {
   font-size: 1.3rem;
 
   /* For enlargement on hover */
-  transition-duration: 0.1s;
+  transition: 0.1s ease-in-out;
 }
 
 #playlist a:hover {
