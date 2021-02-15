@@ -232,7 +232,7 @@ class Handler(BaseHTTPRequestHandler):
             playlist_links = ""
             # If we are not showing the songs in the folder, the first link is always "All songs"
             if not include_songs:
-                playlist_links = """<div class="speciallink"><p><a href="*">All Songs</a></p></div>"""
+                playlist_links = """<div id="speciallink"><p><a href="*">All Songs</a></p></div>"""
 
             if dirs:
                 # Sort the keys (dir names) alphabetically

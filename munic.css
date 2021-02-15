@@ -110,50 +110,43 @@ h3 {
   overflow: auto;
 }
 
-.speciallink {
-  font-size: 1.3rem;
-  border-radius: 0.5rem; 
-  background-color: #555;
-  color: black;
-  border: 1px solid #eee;
-  padding-top: 4px;
-  padding-bottom: 5px;
-  padding-left: 10px;
-  padding-right: 10px;
-  margin:5px;
-}
 
-#playlistlinks {
+.playlistlinks {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
 }
 
-#playlistlinks::after {
+.playlistlinks::after {
   content: "";
   flex: auto;
 }
 
-#playlistlinks div {
+.playlistlinks div {
   font-size: 1.3rem;
   border-radius: 0.9rem; 
   background-color: var(--BG_COL1);
   border: 1px solid #eee;
   padding-top: 4px;
-  padding-bottom: 5px;
+  padding-bottom: 6px;
   padding-left: 10px;
   padding-right: 10px;
-  margin:5px;
+  margin:7px;
 }
 
 
-#playlistlinks div:hover {
+.playlistlinks div:hover {
   border: 1px solid green;
 }
 
-#playlistlinks a {
+.playlistlinks a {
   color: #eee;
   text-decoration: none;
+}
+
+#speciallink {
+  border-radius: 0.7rem; 
+  border: 2px solid #eee;
 }
 
 #playlist ul {
