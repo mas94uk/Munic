@@ -693,7 +693,7 @@ def load_library(media_dirs):
     unknown_extensions = []
     for media_dir in media_dirs:
         logging.info("Scanning media dir {}".format(media_dir))
-        for path, dirs, files in os.walk(media_dir):
+        for path, dirs, files in os.walk(media_dir, followlinks=True):
             # Get files with music extensions, graphic extensions and unknown extensions
             music_files = [file for file in files if file.lower().endswith(known_music_formats) ]
             graphic_files = [file for file in files if file.lower().endswith(known_grapic_formats)]
