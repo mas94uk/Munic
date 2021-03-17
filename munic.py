@@ -30,6 +30,9 @@ MAX_SIMULTANEOUS_TRANSCODES = 1
 # Maximum number of completed transcodes to preserve
 MAX_COMPLETED_TRANSCODES = 20
 
+# The directories in which to look for media
+media_dirs = []
+
 # Data structure containing the media library 
 library = None
 
@@ -141,8 +144,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         logging.info("GET path: {} on thread {}".format(self.path, threading.get_ident()))
 
-        name = self.path
-        name = urllibparse.unquote(name)
+        name = urllibparse.unquote(self.path)
 
         # Front page
         if name == "":
@@ -155,194 +157,226 @@ class Handler(BaseHTTPRequestHandler):
             self.send_file(os.path.join(script_path, "audioPlayer.js"))
         elif name == "/favicon.png":
             self.send_file(os.path.join(script_path, "favicon.png"))
+        elif name == "/munic.png":
+            self.send_file(os.path.join(script_path, "munic.png"))
         elif name == "/munic.css":
             self.send_file(os.path.join(script_path, "munic.css"))
         # If the url ends with a "/" or "/*", treat it as a menu/playlist request for that location 
         elif name.endswith("/") or name.endswith("/*"):
-            # If the request is for a directory, we treat it as requesting a list of subdirs (artists, albums etc.) in that location.
-            #   Queen/ --> gives a list of all Queen albums
-            # If the request is for the file "*", we treat it as a request for everything (all files and subdirs) in that location.
-            #   Queen/* --> gives a list of all Queen albums AND a playlist of all Queen songs.
-
-            include_songs = False
-            if name.endswith("/*"):
-                include_songs = True
-
-            # The root location, relative to the requested location
-            root = ""
-
-            # Get the requested path and navigate to it.
-            # As we go, build up "display_name" with the properly-formatted names of the directories.
-            # Also keep track of the most specific part of the name, for the title.
-            title = "Munic"
-            requested_path = name.rstrip("/")
-            logging.debug("Requested path: {}".format(requested_path))
-            parts = requested_path.split("/")
-            base_dict = library
-            display_names = []
-            dirs = base_dict["dirs"]
-            # Remove empty parts which result from splitting empty strings etc.
-            parts = [ part for part in parts if part and part != "*"]
-            for part in parts:
-                # If that directory does not exist
-                if part not in dirs.keys():
-                    logging.warning("Failed to find {} - failed at {}".format(requested_path, part))
-                    self.send_response(404)
-                    self.end_headers
-                    return
-                base_dict = dirs[part]
-                root += "../"
-                display_names.append(base_dict["display_name"])
-                title = base_dict["display_name"]
-                dirs = base_dict["dirs"]
-
-            # Read the playlist page template html from file
-            with open(os.path.join(script_path, "playlist.html")) as html_file:
-                html = html_file.read()
-
-            # Construct the page. This will be all the directories directly under this one, as links,
-            # and all the files from this directory onwards, as a playlist.
-
-            # Drop in the page title
-            html = html.replace("__TITLE__", title)
-
-            # Drop in the audioplayer javascript file
-            html = html.replace("__AUDIOPLAY_JS__", root + "audioPlayer.js") 
-
-            # Get the headings: the display names of the path, or "Munic" if none.
-            if not display_names:
-                display_names.append("Munic")
-
-            # Lazy way to ensure there are enough items in the list to replace the headings
-            display_names.append("")
-            display_names.append("")
-
-            # Drop in the headings
-            for h in range(0,3):
-                html = html.replace("__HEADING{}__".format(h), display_names[h])
-
-            # Generate some colours and drop them in
-            # TODO Get these from the selected image
-            r = [ random.randint(1,3) for a in range (0,9) ]
-            colours = [ "#{}{}{}".format(r.pop(), r.pop(), r.pop()) for a in range(0,3) ]
-            for c in range(0,3):
-                html = html.replace("__BG_COL{}__".format(c), colours[c])
-
-            # Build the playlist (subdir) links section
-            playlist_links = ""
-            # If we are not showing the songs in the folder, the first link is always "All songs"
-            if not include_songs:
-                playlist_links = """<div id="speciallink"><p><a href="*">All Songs</a></p></div>"""
-
-            if dirs:
-                # Sort the keys (dir names) alphabetically
-                # Note that we are sorting by "simplified name", so "The Beatles" is in with the Bs, not the Ts.
-                dir_names = [ dir_name for dir_name in dirs.keys() ]
-                dir_names.sort()
-                for dir_name in dir_names:
-                    display_name = dirs[dir_name]["display_name"]
-                    link = dir_name + "/*"  # Include '*' to take us to the playlist
-                    playlist_link = """<a href="__LINK__"><div><p>__NAME__</p></div></a>""".replace("__LINK__", link).replace("__NAME__", display_name)
-                    playlist_links = playlist_links + playlist_link
-
-            # Drop the links into the html document
-            html = html.replace("__PLAYLIST_LINKS__", playlist_links)
-
-            # Build the playlist contents.  
-            playlist_items = ""
-
-            if include_songs:
-                # Get all media files at or below this location
-                media_items = get_all_songs(base_dict)
-
-                # Construct the list items
-                for (song_display_name, song_display_album, song_constructed_filepath, art_constructed_filepath) in media_items:
-                    playlist_item = """<li><img src="__ALBUMART__"><a href="__SONG_FILENAME__"><p>__SONG_NAME__</p><p>__ALBUM_NAME__</p></a></li>\n""" \
-                        .replace("__ALBUMART__", art_constructed_filepath) \
-                        .replace("__SONG_FILENAME__", song_constructed_filepath) \
-                        .replace("__SONG_NAME__", song_display_name) \
-                        .replace("__ALBUM_NAME__", song_display_album)
-                    playlist_items = playlist_items + playlist_item
-
-            # Drop the playlist content into the html template
-            html = html.replace("__PLAYLIST_ITEMS__", playlist_items)
-
-            # Drop in the album art
-            art_filepath = get_art_filepath(base_dict)
-            if not art_filepath:
-                art_filepath = "__ROOT__/munic.png"
-
-            html = html.replace("__ALBUMART__", art_filepath);
-
-            # Drop in the root location (last, in case it is used in any substituted values)
-            html = html.replace("__ROOT__", root)
-
-            self.send_html(html)
-
+            self.send_menu(name)
+        # If the url ends with the special case "/_" or "/*_", reload the library
+        elif name.endswith("/_") or name.endswith("/*_"):
+            self.refresh_library(name)
         # Otherwise, assume the request is for a media file 
         else:
-            logging.debug("Attempting to get file {}".format(name))
+            self.send_media(name)
 
-            # Get the file range, if specified by the requester
-            range_header = self.headers.get("Range")
-            range_start = None
-            range_end = None
-            if range_header:
-                logging.debug("Range header: {}".format(range_header))
-                match = re.match("bytes[= :](\\d+|)\\-(\\d+|)$", range_header, re.IGNORECASE)
-                if match and match.lastindex == 2:
-                    groups = match.groups()
-                    range_start = int(groups[0]) if groups[0].isnumeric() else None
-                    range_end = int(groups[1]) if groups[1].isnumeric() else None 
-                    logging.debug("Requested range {}-{}".format(range_start, range_end))
+        logging.info("GET completed: {} on thread {}".format(self.path, threading.get_ident()))
 
-            # Get the dict representing the path of the requested file by walking down the structure to the right directory
-            parts = name.lstrip("/").split("/")
-            base_dict = library
-            for dir_part in parts[:-1]:
-                dirs = base_dict["dirs"]
-                if dir_part not in dirs.keys():
-                    logging.warning("Requested unknown file: {} - failed at {}".format(name, dir_part))
-                    self.send_response(404)
-                    self.end_headers()
-                    return
-                base_dict = dirs[dir_part]
+    def refresh_library(self, name):
+        logging.info("Refreshing media library")
 
-            # Remove the extension from the constructed filename to give the display name
-            constructed_filename = parts[-1]
-            basename, requested_extension = os.path.splitext(constructed_filename)
+        # Perform the refresh
+        global library
+        library = load_library(media_dirs)
 
-            found = False
+        # Redirect the browser to the same location, without the trailing _
+        redirect = name[:-1]
+        logging.info("Redirecting to " + redirect)
+        self.send_response(301)
+        self.send_header('Location', redirect)
+        self.end_headers()
 
-            # If the requested file is the graphic in this directory
-            if constructed_filename == base_dict["graphic_name"]:
-                filepath = base_dict["graphic_filepath"]
-                self.send_file(filepath, range_start, range_end)
-                found = True
-            else:
-                # Find the song in the dictionary (display name is key) and get its real filepath (the value)
-                media = base_dict["media"]
-                if basename in media.keys():
-                    filepath = media[basename][1]
+    def send_menu(self, name):
+        # If the request is for a directory, we treat it as requesting a list of subdirs (artists, albums etc.) in that location.
+        #   Queen/ --> gives a list of all Queen albums
+        # If the request is for the file "*", we treat it as a request for everything (all files and subdirs) in that location.
+        #   Queen/* --> gives a list of all Queen albums AND a playlist of all Queen songs.
 
-                    # If the file is already in the requested format, just send it
-                    actual_extension = os.path.splitext(filepath)[1]
-                    if (actual_extension == requested_extension):
-                        self.send_file(filepath, range_start, range_end)
-                        found = True
-                    # Otherwise if the requested format is a supported type, transcode and send 
-                    elif MAX_SIMULTANEOUS_TRANSCODES and requested_extension in (".ogg", ".mp3"):
-                        self.send_transcoded_file(name, filepath, requested_extension, range_start, range_end)
-                        self.housekeep_transcoders()
-                        found = True
+        include_songs = False
+        if name.endswith("/*"):
+            include_songs = True
 
-            if not found:
-                logging.warning("File {}{}) not found in library".format(basename, requested_extension))
+        # The root location, relative to the requested location
+        root = ""
+
+        # Get the requested path and navigate to it.
+        # As we go, build up "display_name" with the properly-formatted names of the directories.
+        # Also keep track of the most specific part of the name, for the title.
+        title = "Munic"
+        requested_path = name.rstrip("/")
+        logging.debug("Requested path: {}".format(requested_path))
+        parts = requested_path.split("/")
+        base_dict = library
+        display_names = []
+        dirs = base_dict["dirs"]
+        # Remove empty parts which result from splitting empty strings etc.
+        parts = [ part for part in parts if part and part != "*"]
+        for part in parts:
+            # If that directory does not exist
+            if part not in dirs.keys():
+                logging.warning("Failed to find {} - failed at {}".format(requested_path, part))
+                self.send_response(404)
+                self.end_headers
+                return
+            base_dict = dirs[part]
+            root += "../"
+            display_names.append(base_dict["display_name"])
+            title = base_dict["display_name"]
+            dirs = base_dict["dirs"]
+
+        # Read the playlist page template html from file
+        with open(os.path.join(script_path, "playlist.html")) as html_file:
+            html = html_file.read()
+
+        # Construct the page. This will be all the directories directly under this one, as links,
+        # and all the files from this directory onwards, as a playlist.
+
+        # Drop in the page title
+        html = html.replace("__TITLE__", title)
+
+        # Drop in the audioplayer javascript file
+        html = html.replace("__AUDIOPLAY_JS__", root + "audioPlayer.js") 
+
+        # Get the headings: the display names of the path, or "Munic" if none.
+        if not display_names:
+            display_names.append("Munic")
+
+        # Lazy way to ensure there are enough items in the list to replace the headings
+        display_names.append("")
+        display_names.append("")
+
+        # Drop in the headings
+        for h in range(0,3):
+            html = html.replace("__HEADING{}__".format(h), display_names[h])
+
+        # Generate some colours and drop them in
+        # TODO Get these from the selected image
+        r = [ random.randint(1,3) for a in range (0,9) ]
+        colours = [ "#{}{}{}".format(r.pop(), r.pop(), r.pop()) for a in range(0,3) ]
+        for c in range(0,3):
+            html = html.replace("__BG_COL{}__".format(c), colours[c])
+
+        # Build the playlist (subdir) links section
+        playlist_links = ""
+        # If we are not showing the songs in the folder, the first link is always "All songs"
+        if not include_songs:
+            playlist_links = """<div id="speciallink"><p><a href="*">All Songs</a></p></div>"""
+
+        if dirs:
+            # Sort the keys (dir names) alphabetically
+            # Note that we are sorting by "simplified name", so "The Beatles" is in with the Bs, not the Ts.
+            dir_names = [ dir_name for dir_name in dirs.keys() ]
+            dir_names.sort()
+            for dir_name in dir_names:
+                display_name = dirs[dir_name]["display_name"]
+                link = dir_name + "/*"  # Include '*' to take us to the playlist
+                playlist_link = """<a href="__LINK__"><div><p>__NAME__</p></div></a>""".replace("__LINK__", link).replace("__NAME__", display_name)
+                playlist_links = playlist_links + playlist_link
+
+        # Drop the links into the html document
+        html = html.replace("__PLAYLIST_LINKS__", playlist_links)
+
+        # Build the playlist contents.  
+        playlist_items = ""
+
+        # The path to request to refresh the library
+        refresh_path = "_"
+
+        if include_songs:
+            # Get all media files at or below this location
+            media_items = get_all_songs(base_dict)
+
+            # Construct the list items
+            for (song_display_name, song_display_album, song_constructed_filepath, art_constructed_filepath) in media_items:
+                playlist_item = """<li><img src="__ALBUMART__"><a href="__SONG_FILENAME__"><p>__SONG_NAME__</p><p>__ALBUM_NAME__</p></a></li>\n""" \
+                    .replace("__ALBUMART__", art_constructed_filepath) \
+                    .replace("__SONG_FILENAME__", song_constructed_filepath) \
+                    .replace("__SONG_NAME__", song_display_name) \
+                    .replace("__ALBUM_NAME__", song_display_album)
+                playlist_items = playlist_items + playlist_item
+
+            refresh_path = "*_"
+
+        # Drop the playlist content into the html template
+        html = html.replace("__PLAYLIST_ITEMS__", playlist_items)
+
+        # Drop in the album art
+        art_filepath = get_art_filepath(base_dict)
+        if not art_filepath:
+            art_filepath = "__ROOT__munic.png"
+
+        html = html.replace("__ALBUMART__", art_filepath);
+
+        # Drop in the redirect path, which is either "_" if we are not showing songs, or "*_" if we are
+        html = html.replace("__REFRESH__", refresh_path)
+
+        # Drop in the root location (last, in case it is used in any substituted values)
+        html = html.replace("__ROOT__", root)
+
+        self.send_html(html)
+
+    def send_media(self, name):
+        logging.debug("Attempting to get file {}".format(name))
+
+        # Get the file range, if specified by the requester
+        range_header = self.headers.get("Range")
+        range_start = None
+        range_end = None
+        if range_header:
+            logging.debug("Range header: {}".format(range_header))
+            match = re.match("bytes[= :](\\d+|)\\-(\\d+|)$", range_header, re.IGNORECASE)
+            if match and match.lastindex == 2:
+                groups = match.groups()
+                range_start = int(groups[0]) if groups[0].isnumeric() else None
+                range_end = int(groups[1]) if groups[1].isnumeric() else None 
+                logging.debug("Requested range {}-{}".format(range_start, range_end))
+
+        # Get the dict representing the path of the requested file by walking down the structure to the right directory
+        parts = name.lstrip("/").split("/")
+        base_dict = library
+        for dir_part in parts[:-1]:
+            dirs = base_dict["dirs"]
+            if dir_part not in dirs.keys():
+                logging.warning("Requested unknown file: {} - failed at {}".format(name, dir_part))
                 self.send_response(404)
                 self.end_headers()
                 return
+            base_dict = dirs[dir_part]
 
-        logging.info("GET completed: {} on thread {}".format(self.path, threading.get_ident()))
+        # Remove the extension from the constructed filename to give the display name
+        constructed_filename = parts[-1]
+        basename, requested_extension = os.path.splitext(constructed_filename)
+
+        found = False
+
+        # If the requested file is the graphic in this directory
+        if constructed_filename == base_dict["graphic_name"]:
+            filepath = base_dict["graphic_filepath"]
+            self.send_file(filepath, range_start, range_end)
+            found = True
+        else:
+            # Find the song in the dictionary (display name is key) and get its real filepath (the value)
+            media = base_dict["media"]
+            if basename in media.keys():
+                filepath = media[basename][1]
+
+                # If the file is already in the requested format, just send it
+                actual_extension = os.path.splitext(filepath)[1]
+                if (actual_extension == requested_extension):
+                    self.send_file(filepath, range_start, range_end)
+                    found = True
+                # Otherwise if the requested format is a supported type, transcode and send 
+                elif MAX_SIMULTANEOUS_TRANSCODES and requested_extension in (".ogg", ".mp3"):
+                    self.send_transcoded_file(name, filepath, requested_extension, range_start, range_end)
+                    self.housekeep_transcoders()
+                    found = True
+
+        if not found:
+            logging.warning("File {}{} not found in library".format(basename, requested_extension))
+            self.send_response(404)
+            self.end_headers()
+            return
 
     def send_html(self, htmlstr):
         "Simply sends htmlstr with status 200 and the correct content-type and content-length."
@@ -593,7 +627,7 @@ def get_all_songs(dir_dict, constructed_path: str = "", display_path: str = ""):
         art_filepath = constructed_path + art_filepath
     else:
         # If no graphic found, use the default logo
-        art_filepath = "__ROOT__/munic.png"
+        art_filepath = "__ROOT__munic.png"
 
     results = []
     # Get all media files in this directory, sorted alphabetically
@@ -632,13 +666,10 @@ def get_art_filepath(base_dict):
     # Otherwise get a random image from anywhere below this
     else:
         album_arts = get_all_graphics(base_dict)
-        logging.debug("Found {} graphics to choose from".format(len(album_arts)))
-
         if album_arts:
             album_art = random.choice(album_arts)
 
     return album_art
-
 
 """ Get a complete, flat list of all graphics in the library.
 Returns a list of constructed filepaths.
@@ -757,8 +788,11 @@ if __name__ == '__main__':
     # Get the source directory
     script_path = os.path.dirname(os.path.realpath(__file__))
 
+    # All arguments are media dirs
+    media_dirs = sys.argv[1:]
+
     # Load the library of songs to serve
-    library = load_library(sys.argv[1:])
+    library = load_library(media_dirs)
 
     # Serve on all interfaces, port 4444
     server = ThreadingSimpleServer(('0.0.0.0', 4444), Handler)

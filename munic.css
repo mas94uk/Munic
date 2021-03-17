@@ -243,6 +243,18 @@ h3 {
 }
 
 #audioPlayer2:focus { 
-  outline: none; 
+  outline: none;
 }
 
+#admin {
+  position: fixed;
+  top: 5px;
+  right: 5px;
+  opacity: 0;
+  transition: 0.5s ease-in;
+  font-size: 1.5rem;
+}
+
+#admin:hover {
+  opacity: 1;
+}
