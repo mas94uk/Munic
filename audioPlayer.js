@@ -92,6 +92,10 @@ class AudioPlaylist{
 
         // Focus the active player so e.g. space does play/pause
         this.activePlayer.focus()
+
+        // Connect the player output to the equaliser input
+        var src = this.context.createMediaElementSource(this.activePlayer);
+        this.muneq.setInput(src);
     }
 
     preloadNextTrack() {
@@ -271,6 +275,12 @@ class AudioPlaylist{
             document.getElementsByClassName("footer")[0].style.display = "none";
             document.getElementById("controls").style.display = "none";
         }
+
+        // Get the equaliser canvas and set up the equaliser.
+        // We will connect the player to it when we play a track.
+        var canvas = document.getElementsByClassName("equalisercanvas")[0];
+        this.context = new window.AudioContext();
+        this.muneq = new Muneq(this.context, canvas);
 
         if(this.shuffle)
             this.randomizeOrder();

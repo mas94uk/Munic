@@ -155,6 +155,8 @@ class Handler(BaseHTTPRequestHandler):
         # If requesting a static file...
         elif name == "/audioPlayer.js":
             self.send_file(os.path.join(script_path, "audioPlayer.js"))
+        elif name == "/muneq.js":
+            self.send_file(os.path.join(script_path, "muneq.js"))
         elif name == "/favicon.png":
             self.send_file(os.path.join(script_path, "favicon.png"))
         elif name == "/munic.png":
@@ -235,20 +237,21 @@ class Handler(BaseHTTPRequestHandler):
         # Drop in the page title
         html = html.replace("__TITLE__", title)
 
-        # Drop in the audioplayer javascript file
+        # Drop in the audioplayer and equaliser javascript files
         html = html.replace("__AUDIOPLAY_JS__", root + "audioPlayer.js") 
+        html = html.replace("__MUNEQ_JS__", root + "muneq.js") 
 
-        # Get the headings: the display names of the path, or "Munic" if none.
+        # Get the titles: the display names of the path, or "Munic" if none.
         if not display_names:
             display_names.append("Munic")
 
-        # Lazy way to ensure there are enough items in the list to replace the headings
+        # Lazy way to ensure there are enough items in the list to replace the titles
         display_names.append("")
         display_names.append("")
 
-        # Drop in the headings
+        # Drop in the titles
         for h in range(0,3):
-            html = html.replace("__HEADING{}__".format(h), display_names[h])
+            html = html.replace("__TITLE{}__".format(h), display_names[h])
 
         # Generate some colours and drop them in
         # TODO Get these from the selected image

@@ -57,7 +57,7 @@ h3 {
   user-select: none;
 }
 
-.header {
+.headerbox {
   margin: 2rem;
   display: flex;
   align-items: center;
@@ -76,8 +76,24 @@ h3 {
   transition: all 1s;
 }
 
-.headings {
+.heading {
   flex: 1;
+  position: relative;
+  z-index: 0;
+}
+
+.canvasdiv {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.equalisercanvas {
+  width: 100%;
+  height: 100%;
 }
 
 #controls {
