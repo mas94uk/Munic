@@ -26,7 +26,7 @@ Munic is tested on Ubuntu 20.04 and Debian Buster, but should work on any Linux 
 Munic is working and usable.  There are several more features I would like to implement -- see the todo list below.
 
 ## Todo list
-- Add ability to rescan library (currently just restart it to do this)
+- Store the equaliser settings between pages
 - Add command-line config options: port, user:pass, or config file
 - Add command-line help
 - Document nginx reverse proxy setup

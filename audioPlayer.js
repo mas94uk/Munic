@@ -2,6 +2,10 @@
 
 class AudioPlaylist{
     onPlay(){
+        // Connect the player output to the equaliser input
+        this.init();
+        this.muneq.setInput(this.activeMediaSource);
+
         // Set the title and now-playing.
         // We do this here, rather than in setTrack(), so that it does not happen when the
         // page loads and nothing is yet playing.
@@ -73,6 +77,10 @@ class AudioPlaylist{
             this.activePlayer = this.sparePlayer;
             this.sparePlayer = temp;
 
+            temp = this.activeMediaSource;
+            this.activeMediaSource = this.spareMediaSource;
+            this.spareMediaSource = temp;
+
             this.activePlayer.controls = true;
             this.sparePlayer.controls = false;
         } else {
@@ -92,10 +100,6 @@ class AudioPlaylist{
 
         // Focus the active player so e.g. space does play/pause
         this.activePlayer.focus()
-
-        // Connect the player output to the equaliser input
-        var src = this.context.createMediaElementSource(this.activePlayer);
-        this.muneq.setInput(src);
     }
 
     preloadNextTrack() {
@@ -342,5 +346,19 @@ class AudioPlaylist{
         this.content.onscroll = function() {classObj.manageSizes();};
         window.onresize = function() {classObj.manageSizes();}
         this.manageSizes();
+    }
+
+    init() {
+        // Firefox does not allow us to createMediaElementSource() until the user has clicked on the page, so we
+        // can't do this in the construcor.
+        // Chrome does not allow createMediaElementSource() to be called more than once per player, so we can't
+        // just create a new one each time we play.
+        // Instead, create the MediaElementSources here the first time a play starts, which satisfies both restrictions.
+        if(!this.initialised) {
+            this.activeMediaSource = this.context.createMediaElementSource(this.activePlayer);
+            this.spareMediaSource = this.context.createMediaElementSource(this.sparePlayer);
+            this.initialised = true;
+        }
+
     }
 }
