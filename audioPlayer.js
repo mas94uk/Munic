@@ -355,6 +355,7 @@ class AudioPlaylist{
         // just create a new one each time we play.
         // Instead, create the MediaElementSources here the first time a play starts, which satisfies both restrictions.
         if(!this.initialised) {
+            this.context.resume();
             this.activeMediaSource = this.context.createMediaElementSource(this.activePlayer);
             this.spareMediaSource = this.context.createMediaElementSource(this.sparePlayer);
             this.initialised = true;
