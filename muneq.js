@@ -25,6 +25,9 @@ class Muneq {
 
 		    // Set the gain of this band
 		    this.filters[band].gain.value = gain;
+
+		    // Store the value
+		    sessionStorage.setItem(band, gain);
 		}
 
 	    // Update the frequency response curve and highlight the band we are hovering over
@@ -128,7 +131,8 @@ class Muneq {
 		this.fmax = 20000;
 
 		// Create an array of BiQuadFilter.
-		// Set their centre frequencies in the middle of each of numBands bands. 
+		// Set their centre frequencies in the middle of each of numBands bands.
+		// Set their gain to the stored value.
 		this.filters = new Array(this.numBands);
 		var log_fmin = Math.log(this.fmin);
 		var log_fmax = Math.log(this.fmax);
@@ -140,12 +144,17 @@ class Muneq {
 		for(var i=0 ; i<this.numBands ; ++i) {
 			 var filter = audioContext.createBiquadFilter();
 			 filter.type = "peaking";
-			 // var freq = Math.round(Math.E**(log_fmin + gap*((2*i)+1)))
 			 var freq = Math.round(freqs[2*i + 1])	;
 			 filter.frequency.value = freq;
 			 filter.Q.value = 1.75;	// Determined heuristically
 
-			 this.filters[i] = filter;
+ 		    // Set the gain of this band to the stored value, if one exists.
+ 		    // This will persist for the duration of the session, which is good enough for now.
+ 		    if(sessionStorage.getItem(i)) {
+		    	filter.gain.value = sessionStorage.getItem(i);
+ 		    }
+
+			this.filters[i] = filter;
 
 			// Chain the filters together
 			if(i>0) {
