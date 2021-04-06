@@ -27,7 +27,7 @@ class Muneq {
 		    this.filters[band].gain.value = gain;
 
 		    // Store the value
-		    sessionStorage.setItem(band, gain);
+		    localStorage.setItem(band, gain);
 		}
 
 	    // Update the frequency response curve and highlight the band we are hovering over
@@ -149,9 +149,8 @@ class Muneq {
 			 filter.Q.value = 1.75;	// Determined heuristically
 
  		    // Set the gain of this band to the stored value, if one exists.
- 		    // This will persist for the duration of the session, which is good enough for now.
- 		    if(sessionStorage.getItem(i)) {
-		    	filter.gain.value = sessionStorage.getItem(i);
+ 		    if(localStorage.getItem(i)) {
+		    	filter.gain.value = localStorage.getItem(i);
  		    }
 
 			this.filters[i] = filter;
