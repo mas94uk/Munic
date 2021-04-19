@@ -271,9 +271,6 @@ class AudioPlaylist{
         // No track is pre-loaded on the spare player
         this.sparePlayerTrackPos = NaN;
 
-        // Start the volume at half
-        this.activePlayer.volume = 0.5;
-
         // Hide the audio player footer and the play controls if there are no tracks
         if(this.length == 0) {
             document.getElementsByClassName("footer")[0].style.display = "none";
@@ -334,13 +331,27 @@ class AudioPlaylist{
 
         // Sync volume changes and mute status between the two players
         this.player1.addEventListener("volumechange", function() {
-            if(classObj.player2.volume != classObj.player1.volume) classObj.player2.volume = classObj.player1.volume;
+            if(classObj.player2.volume != classObj.player1.volume) {
+                classObj.player2.volume = classObj.player1.volume;
+                localStorage.setItem("volume", classObj.player1.volume);
+            }
             if(classObj.player2.muted != classObj.player1.muted) classObj.player2.muted = classObj.player1.muted;
         });
         this.player2.addEventListener("volumechange", function() {
-            if(classObj.player1.volume != classObj.player2.volume) classObj.player1.volume = classObj.player2.volume;
+            if(classObj.player1.volume != classObj.player2.volume) {
+                classObj.player1.volume = classObj.player2.volume;
+                localStorage.setItem("volume", classObj.player2.volume);                 
+            } 
             if(classObj.player1.muted != classObj.player2.muted) classObj.player1.muted = classObj.player2.muted;
         });
+
+        // If there is a stored volume, set volume to it; else to half.
+        var volume = 0.5;
+        if(localStorage.getItem("volume")) {
+            volume = localStorage.getItem("volume");
+            console.log("Restoring volume " + volume);
+        }
+        this.activePlayer.volume = volume;
 
         // Resize parts when scrolling or resizing, plus once upon loading (now)
         this.content.onscroll = function() {classObj.manageSizes();};
