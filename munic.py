@@ -227,6 +227,20 @@ class Handler(BaseHTTPRequestHandler):
             title = base_dict["display_name"]
             dirs = base_dict["dirs"]
 
+        # Get all media files at (but not below) this location
+        media_items = get_all_songs(base_dict, recurse=False)
+
+        # If there are no files in this directory, and exactly one subdirectory, redirect to it.
+        # (So if you view artist X, and that artist has exactly one album, automatically enter it.)
+        if len(media_items) == 0 and len(dirs) == 1:
+            logging.info("No direct media and only one subdir -> redirecting down one level")
+            redirect = list(dirs.keys())[0] + "/"
+            if include_songs:
+                redirect += "*"
+            self.send_response(301)
+            self.send_header("Location", redirect)
+            return
+
         # Read the playlist page template html from file
         with open(os.path.join(script_path, "playlist.html")) as html_file:
             html = html_file.read()
@@ -288,7 +302,7 @@ class Handler(BaseHTTPRequestHandler):
 
         if include_songs:
             # Get all media files at or below this location
-            media_items = get_all_songs(base_dict)
+            media_items = get_all_songs(base_dict, recurse=True)
 
             # Construct the list items
             for (song_display_name, song_display_album, song_constructed_filepath, art_constructed_filepath) in media_items:
@@ -622,7 +636,7 @@ Returns an alphabetical list of tuples of (song display name, album display name
 "Constructed filepath" is the apparent filepath relative to the given dir-dict, e.g. "queen/adayattheraces/drowse.mp3".
 "Art constructed filepath" is the path to request for the album art.
 (This includes the extension (e.g. .mp3) in case the browser requires it to play the file.)"""
-def get_all_songs(dir_dict, constructed_path: str = "", display_path: str = ""):
+def get_all_songs(dir_dict, constructed_path: str = "", display_path: str = "", recurse = True):
     media = dir_dict["media"]
     dirs = dir_dict["dirs"]
     art_filepath = get_art_filepath(dir_dict)
@@ -648,12 +662,13 @@ def get_all_songs(dir_dict, constructed_path: str = "", display_path: str = ""):
         results.sort(key=lambda tup: tup[0].casefold())
 
     # Recurse into all sub-dirs (in alphabetical order), appending the directory name to the path
-    sub_dirs = [sd for sd in dirs.keys()]
-    sub_dirs.sort()
-    for sub_dir in sub_dirs:
-        sub_dir_dict = dirs[sub_dir]
-        sub_dir_display_path = sub_dir_dict["display_name"]
-        results = results + get_all_songs(sub_dir_dict, constructed_path + sub_dir + "/", display_path + sub_dir_display_path + "/")
+    if recurse:
+        sub_dirs = [sd for sd in dirs.keys()]
+        sub_dirs.sort()
+        for sub_dir in sub_dirs:
+            sub_dir_dict = dirs[sub_dir]
+            sub_dir_display_path = sub_dir_dict["display_name"]
+            results = results + get_all_songs(sub_dir_dict, constructed_path + sub_dir + "/", display_path + sub_dir_display_path + "/", True)
 
     return results
 
