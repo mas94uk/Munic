@@ -185,7 +185,7 @@ class Handler(BaseHTTPRequestHandler):
         # Redirect the browser to the same location, without the trailing _
         redirect = name[:-1]
         logging.info("Redirecting to " + redirect)
-        self.send_response(301)
+        self.send_response(303)
         self.send_header('Location', redirect)
         self.end_headers()
 
@@ -219,7 +219,7 @@ class Handler(BaseHTTPRequestHandler):
             if part not in dirs.keys():
                 logging.warning("Failed to find {} - failed at {}".format(requested_path, part))
                 self.send_response(404)
-                self.end_headers
+                self.end_headers()
                 return
             base_dict = dirs[part]
             root += "../"
@@ -233,12 +233,13 @@ class Handler(BaseHTTPRequestHandler):
         # If there are no files in this directory, and exactly one subdirectory, redirect to it.
         # (So if you view artist X, and that artist has exactly one album, automatically enter it.)
         if len(media_items) == 0 and len(dirs) == 1:
-            logging.info("No direct media and only one subdir -> redirecting down one level")
             redirect = list(dirs.keys())[0] + "/"
             if include_songs:
                 redirect += "*"
-            self.send_response(301)
+            logging.info("No direct media and only one subdir -> redirecting down one level to %s" % redirect)
+            self.send_response(303)
             self.send_header("Location", redirect)
+            self.end_headers()
             return
 
         # Read the playlist page template html from file
