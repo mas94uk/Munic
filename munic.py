@@ -173,6 +173,7 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self.send_media(name)
 
+        self.finish()
         logging.info("GET completed: {} on thread {}".format(self.path, threading.get_ident()))
 
     def refresh_library(self, name):
