@@ -4,6 +4,7 @@
 html, body {
   height: 100%;
   margin: 0;
+  font-size: clamp(5px, 0.9vmax, 20px);
 }
 
 body {
@@ -16,41 +17,34 @@ p {
   margin:0;
 }
 
+h1, h2, h3 {
+  color: #222;
+  font-style: italic;
+  text-align: center;
+  margin: 1rem;
+  transition: all 1s;
+}
+
 h1 {
   font-size: 5rem;
   font-weight: 550;
-  font-style: italic;
-  color: #eee;
-  text-align: center;
-  margin:1rem;
-  transition: all 1s;
 }
 
 h2 {
   font-size: 3rem;
   font-weight: 200;
-  font-style: italic;
-  color: #eee;
-  text-align: center;
-  margin: 1rem;
-  transition: all 1s;
 }
 
 h3 {
   font-size: 2rem;
   font-weight: 200;
-  font-style: italic;
-  color: #eee;
-  text-align: center;
-  margin: 1rem;
-  transition: all 1s;
 }
 
 .wrapper {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background-image: linear-gradient(to bottom, var(--BG_COL0), var(--BG_COL1), var(--BG_COL2));
+  background-image: linear-gradient(to bottom, #888, #EEE, #DDD);
   background-attachment: fixed;
 
   /* Make everything unselectable */
@@ -59,21 +53,27 @@ h3 {
 
 .headerbox {
   margin: 2rem;
+  margin-bottom: 1rem;
   display: flex;
   align-items: center;
-  border: 0.4rem solid #fff;
-  border-radius: 2rem;
-  width: 100%
+  padding: 1rem;
+  border: 0.1rem solid #2226;
+  border-radius: 0.3rem;
+  /* width: 100%; */
   justify-content: center;
-  background-image: linear-gradient(to bottom right, var(--BG_COL0), var(--BG_COL1), var(--BG_COL2));
+  background-image: linear-gradient(to top right, #EEE, #DDD, #EEE);
+  box-shadow: 2px 2px 2px 2px #2226;
 }
 
 .picture {
   align-self: stretch;
   max-height: 15rem; 
-  margin: 0.5rem;
+/*   margin: 0.5rem; */
+  padding: 0.5rem;
+/*   border: 1px #2226; */
   border-radius: 1.1rem;  
   transition: all 1s;
+  box-shadow: 2px 2px 2px 2px #222A;
 }
 
 .heading {
@@ -143,30 +143,34 @@ h3 {
 }
 
 .playlistlinks div {
+  height: 1.7rem;
   font-size: 1.3rem;
-  border-radius: 0.9rem; 
-  background-color: var(--BG_COL1);
-  border: 1px solid #eee;
+  border-radius: 0.2rem; 
+  background-color: #DDE;
+  border: 1px solid #222;
   padding-top: 4px;
   padding-bottom: 6px;
   padding-left: 10px;
   padding-right: 10px;
   margin:7px;
   transition: 0.2s ease-out;
+  color: #222;
+  box-shadow: 2px 2px 2px 2px #2226;
 }
 
 .playlistlinks div:hover {
   border: 1px solid green;
+  font-size: 1.4rem;
 }
 
 .playlistlinks a {
-  color: #eee;
+/*   color: #eee; */
   text-decoration: none;
   outline: none;
 }
 
 .playlistlinks a:hover {
-  color: #fff;
+  color: #111;
 }
 
 #speciallink {
@@ -188,28 +192,38 @@ h3 {
 
 #playlist ul::after {
   content: "";
-  width: 500px;
+  width: 30rem;
   padding: 0.5rem;
 } 
 
 #playlist li {
-  width: 500px;
-  height: 50px;
+  width: 30rem;
+  height: 3rem;
   display: flex;
   align-items:center;
   padding: 0.5rem;
+  margin: 0.4rem;
+  border-radius: 0.2rem;
+  background-color: #EFF;
+  box-shadow: 2px 2px 2px 2px #2226;
+  white-space: nowrap;
+  text-overflow: ellipsis;  /* Why doesn't this work?! */  
+  overflow: hidden; /* Workaround for "text-overflow: ellipsis" not working */
 }
+
 
 #playlist img {
   max-height: 3rem;
   max-width: 3rem;
   object-fit: cover;
-  border-radius: 0.3rem;
+  border: 1px solid black;
+  border-radius: 0.2rem;
+  box-shadow: 1px 1px 1px 2px #2226;
   margin-right: 1rem;
 }
 
 #playlist a {
-  color: #eee;
+  color: #222;
   text-decoration: none;
   font-size: 1.3rem;
 
@@ -220,7 +234,7 @@ h3 {
 #playlist a:hover {
   /* Slight enlargement and brightening */
   font-size: 1.4rem;
-  color: #fff;
+  color: #111;
 }
 
 #playlist .current-song a {
@@ -228,19 +242,19 @@ h3 {
 }
 
 .footer {
-  color: #eee;
+  color: #222;
   text-align: center;
   margin: 2rem;
   margin-top: 0;
 }
 
 .footer p {
-  color: #eee;
+  color: #222;
   margin-bottom: 10px;
 }
 
 .footer a {
-  color: #eee;
+  color: #222;
   padding: 5px;
   text-decoration: none;
   padding-left: 3rem;
