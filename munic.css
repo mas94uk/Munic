@@ -238,7 +238,15 @@ h3 {
 }
 
 #playlist .current-song a {
-  color:yellow;
+  color:#000;
+}
+
+#playlist .current-song {
+  border: 0.1rem;
+  padding: 0.4rem;  /* Reduced by 0.1rem to allow for border */
+  border-style: solid;
+  border-color: #FF0;
+  box-shadow: 0px 0px 3px 3px #FF06;
 }
 
 .footer {
