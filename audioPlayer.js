@@ -221,18 +221,18 @@ class AudioPlaylist{
 
     manageSizes() {
         // When we scroll down, or if the vertical height is very low, shrink the header
-        if (this.content.scrollTop > 20 || this.content.clientHeight<300) {
+        if (this.content.scrollTop > 70 || this.content.clientHeight<300) {
             // Make everything 2/3 original size
             this.albumart.style.maxHeight = "10rem";
             this.header1.style.fontSize = "3.33rem";
             this.header2.style.fontSize = "2rem";
             this.header3.style.fontSize = "1.333rem";
-        } else {
+        } else if (this.content.scrollTop < 5) {
             // Make everything its original size
-            this.albumart.style.maxHeight = "15rem";
-            this.header1.style.fontSize = "5rem";
-            this.header2.style.fontSize = "3rem";
-            this.header3.style.fontSize = "2rem";
+            this.albumart.style.maxHeight = "12rem";
+            this.header1.style.fontSize = "4rem";
+            this.header2.style.fontSize = "2.4rem";
+            this.header3.style.fontSize = "1.6rem";
         }
     }
 
@@ -349,7 +349,6 @@ class AudioPlaylist{
         var volume = 0.5;
         if(localStorage.getItem("volume")) {
             volume = localStorage.getItem("volume");
-            console.log("Restoring volume " + volume);
         }
         this.activePlayer.volume = volume;
 

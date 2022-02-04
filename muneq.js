@@ -140,7 +140,6 @@ class Muneq {
 		var gap = (log_fmax - log_fmin) / (numFreqs-1)
 
 		var freqs = this.getFreqencies(numFreqs);
-		console.log(freqs);
 		for(var i=0 ; i<this.numBands ; ++i) {
 			 var filter = audioContext.createBiquadFilter();
 			 filter.type = "peaking";
@@ -183,8 +182,6 @@ class Muneq {
 
 	    // Draw the frequency response curve
 	    this.draw(-1);
-
-		console.log("Constructed OK");
 	}
 
 
@@ -193,7 +190,5 @@ class Muneq {
 	   We might sort this out in future by implementing the eq as its own AudioNode. */
 	setInput(sourceNode) {
 		sourceNode.connect(this.filters[0]);
-
-		console.log("Input set");
 	}
 }
