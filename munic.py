@@ -280,7 +280,7 @@ class Handler(BaseHTTPRequestHandler):
         playlist_links = ""
         # If we are not showing the songs in the folder, the first link is always "All songs"
         if not include_songs:
-            playlist_links = """<div id="speciallink"><p><a href="*">All Songs</a></p></div>"""
+            playlist_links = """<li id="speciallink"><a href="*"><p>All Songs</p></a></li>\n"""
 
         if dirs:
             # Sort the keys (dir names) alphabetically
@@ -290,7 +290,9 @@ class Handler(BaseHTTPRequestHandler):
             for dir_name in dir_names:
                 display_name = dirs[dir_name]["display_name"]
                 link = dir_name + "/*"  # Include '*' to take us to the playlist
-                playlist_link = """<a href="__LINK__"><div><p>__NAME__</p></div></a>""".replace("__LINK__", link).replace("__NAME__", display_name)
+                playlist_link = """<li><a href="__LINK__"><p>__NAME__</p></a></li>\n""" \
+                    .replace("__LINK__", link) \
+                    .replace("__NAME__", display_name)
                 playlist_links = playlist_links + playlist_link
 
         # Drop the links into the html document
@@ -308,7 +310,7 @@ class Handler(BaseHTTPRequestHandler):
 
             # Construct the list items
             for (song_display_name, song_display_album, song_constructed_filepath, art_constructed_filepath) in media_items:
-                playlist_item = """<li><img src="__ALBUMART__"><a href="__SONG_FILENAME__"><p>__SONG_NAME__</p><p>__ALBUM_NAME__</p></a></li>\n""" \
+                playlist_item = """<li><a href="__SONG_FILENAME__"><div><img src="__ALBUMART__"/></div><div><p>__SONG_NAME__</p><p>__ALBUM_NAME__</p></div></a></li>\n""" \
                     .replace("__ALBUMART__", art_constructed_filepath) \
                     .replace("__SONG_FILENAME__", song_constructed_filepath) \
                     .replace("__SONG_NAME__", song_display_name) \

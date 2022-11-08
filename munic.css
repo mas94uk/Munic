@@ -131,46 +131,51 @@ h3 {
   overflow: auto;
 }
 
-.playlistlinks {
+#playlistlinks ul {
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
-  justify-content: space-between;
+  justify-content: space-between;  
+  list-style: none;
 }
 
-.playlistlinks::after {
+#playlistlinks ul::after {
   content: "";
   flex: auto;
 }
 
-.playlistlinks div {
-  height: 1.7rem;
-  font-size: 1.3rem;
+#playlistlinks a {
+  display: flex;
+  width: 30rem;
+  height: 2rem;
+  align-items: center;
+  text-align: center;
+  padding: 0.5rem;
+  margin: 0.4rem;
   border-radius: 0.2rem; 
   background-color: #DDE;
-  border: 1px solid #222;
-  padding-top: 4px;
-  padding-bottom: 6px;
-  padding-left: 10px;
-  padding-right: 10px;
-  margin:7px;
-  transition: 0.2s ease-out;
-  color: #222;
   box-shadow: 2px 2px 2px 2px #2226;
-}
-
-.playlistlinks div:hover {
-  border: 1px solid green;
-  font-size: 1.4rem;
-}
-
-.playlistlinks a {
-/*   color: #eee; */
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  color: #222;
   text-decoration: none;
+  font-size: 1.3rem;
+  transition: 0.2s ease-out;
+  border: 1px solid #222;
   outline: none;
 }
 
-.playlistlinks a:hover {
+#playlistlinks a:hover {
+  /* Slight darkening of text and brightening of background */
   color: #111;
+  background-color: #EEF;
+
+}
+
+#playlistlinks p {
+  /* Ensure <p>s fill the container so that "text-align: centre" centres properly in the container */ 
+  width: 100%;
 }
 
 #speciallink {
@@ -183,11 +188,11 @@ h3 {
 }
 
 #playlist ul {
-  list-style: none;
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
   justify-content: space-between;
+  list-style: none;
 }
 
 #playlist ul::after {
@@ -196,23 +201,8 @@ h3 {
   padding: 0.5rem;
 } 
 
-#playlist li {
-  width: 30rem;
-  height: 3rem;
-  display: flex;
-  align-items:center;
-  padding: 0.5rem;
-  margin: 0.4rem;
-  border-radius: 0.2rem;
-  background-color: #EFF;
-  box-shadow: 2px 2px 2px 2px #2226;
-  white-space: nowrap;
-  text-overflow: ellipsis;  /* Why doesn't this work?! */  
-  overflow: hidden; /* Workaround for "text-overflow: ellipsis" not working */
-}
-
-
 #playlist img {
+  display: block;
   max-height: 3rem;
   max-width: 3rem;
   object-fit: cover;
@@ -223,18 +213,35 @@ h3 {
 }
 
 #playlist a {
+  display: flex;
+  width: 30rem;
+  height: 3rem;
+  align-items: center;
+  padding: 0.5rem;
+  margin: 0.4rem;
+  border-radius: 0.2rem;
+  background-color: #EFF;
+  box-shadow: 2px 2px 2px 2px #2225;
+  white-space: nowrap;
+  text-overflow: ellipsis;  /* Why doesn't this work?! */  
+  overflow: hidden; /* Workaround for "text-overflow: ellipsis" not working */
   color: #222;
   text-decoration: none;
   font-size: 1.3rem;
 
-  /* For enlargement on hover */
-  transition: 0.1s ease-in-out;
+  /* For changes on hover */
+  transition: 0.15s ease-in-out;
+
+  /* Invisible (entirely transparent) border which is given colour when current-song class is applied */
+  border: 0.1rem;
+  border-style: solid;
+  border-color: #FFF0;
 }
 
 #playlist a:hover {
-  /* Slight enlargement and brightening */
-  font-size: 1.4rem;
+  /* Slight darkening of text and brightening of background */
   color: #111;
+  background-color: #FFF;
 }
 
 #playlist .current-song a {
@@ -242,11 +249,8 @@ h3 {
 }
 
 #playlist .current-song {
-  border: 0.1rem;
-  padding: 0.4rem;  /* Reduced by 0.1rem to allow for border */
-  border-style: solid;
-  border-color: #FF0;
-  box-shadow: 0px 0px 3px 3px #FF06;
+  border-color: #FF0A;
+  box-shadow: 0px 0px 3px 3px #FF05;
 }
 
 .footer {

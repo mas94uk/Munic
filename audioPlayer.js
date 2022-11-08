@@ -19,7 +19,7 @@ class AudioPlaylist{
         this.nowPlaying.innerHTML = nowPlaying;
 
         // Highlight the currently-playing track
-        $("#"+this.playlistId+ " li").eq(listPos).addClass(this.currentClass);
+        $("#"+this.playlistId+ " li a").eq(listPos).addClass(this.currentClass);
 
         // Move the link to the middle of the screen
         link.scrollIntoView({ behavior: "smooth", block: "center", inline: "center"});
