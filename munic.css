@@ -4,13 +4,18 @@
 html, body {
   height: 100%;
   margin: 0;
-  font-size: clamp(5px, 0.9vmax, 20px);
+  font-size: clamp(9px, 0.9vmax, 18px);
 }
 
 body {
   font-family: 'Exo 2', sans-serif;
   justify-content: center;
   align-items: center;  
+}
+
+ul {
+  list-style: none;
+  padding: 0;
 }
 
 p {
@@ -68,9 +73,7 @@ h3 {
 .picture {
   align-self: stretch;
   max-height: 12rem; 
-/*   margin: 0.5rem; */
   padding: 0.5rem;
-/*   border: 1px #2226; */
   border-radius: 1.1rem;  
   transition: all 1s;
   box-shadow: 2px 2px 2px 2px #222A;
@@ -89,6 +92,12 @@ h3 {
   width: 100%;
   height: 100%;
   z-index: 1;
+  transition-duration: 1s;
+}
+
+.canvasdiv:hover {
+  background-color: #5568;
+  border-radius: 0.5rem;
 }
 
 .equalisercanvas {
@@ -103,6 +112,7 @@ h3 {
   margin-right: 1rem;
   margin-top: 0.1rem;
   margin-bottom: 0.1rem;
+  margin-left: 1rem;
   font-size: 3.5rem;
   width: 11rem;
 }
@@ -136,12 +146,17 @@ h3 {
   flex-direction: row;
   flex-wrap: wrap;
   justify-content: space-between;  
-  list-style: none;
 }
 
 #playlistlinks ul::after {
+  /* Sizes to mach #playlistlinks a */
   content: "";
-  flex: auto;
+  width: 30rem;
+  padding: 0.5rem;
+  margin: 0.4rem;
+  border: 0.1rem;
+  border-style: solid;
+  border-color: #0000;
 }
 
 #playlistlinks a {
@@ -192,13 +207,17 @@ h3 {
   flex-direction: row;
   flex-wrap: wrap;
   justify-content: space-between;
-  list-style: none;
 }
 
 #playlist ul::after {
+  /* Sizes to mach #playlist a */
   content: "";
   width: 30rem;
   padding: 0.5rem;
+  margin: 0.4rem;
+  border: 0.1rem;
+  border-style: solid;
+  border-color: #0000;
 } 
 
 #playlist img {
