@@ -64,7 +64,6 @@ h3 {
   padding: 1rem;
   border: 0.1rem solid #2226;
   border-radius: 0.3rem;
-  /* width: 100%; */
   justify-content: center;
   background-image: linear-gradient(to top right, #EEE, #DDD, #EEE);
   box-shadow: 2px 2px 2px 2px #2226;
@@ -151,25 +150,21 @@ h3 {
 #playlistlinks ul::after {
   /* Sizes to mach #playlistlinks a */
   content: "";
-  width: 30rem;
-  padding: 0.5rem;
+  width: 15rem;
+  padding: 1rem;
   margin: 0.4rem;
-  border: 0.1rem;
-  border-style: solid;
-  border-color: #0000;
 }
 
 #playlistlinks a {
   display: flex;
-  width: 30rem;
-  height: 2rem;
+  flex-direction: column;
+  width: 15rem;
+  height: 17rem;
   align-items: center;
   text-align: center;
-  padding: 0.5rem;
+  padding: 1rem;
   margin: 0.4rem;
-  border-radius: 0.2rem; 
-  background-color: #DDE;
-  box-shadow: 2px 2px 2px 2px #2226;
+  border-radius: 1.5rem; 
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
@@ -177,29 +172,29 @@ h3 {
   text-decoration: none;
   font-size: 1.3rem;
   transition: 0.2s ease-out;
-  border: 1px solid #222;
   outline: none;
+}
+
+#playlistlinks img {
+  height: 15rem;
+  align-self: stretch;
+  padding: 0.5rem;
+  border-radius: 1.1rem;  
+  transition: all 1s;
+  box-shadow: 2px 2px 2px 2px #222A;
 }
 
 #playlistlinks a:hover {
   /* Slight darkening of text and brightening of background */
   color: #111;
   background-color: #EEF;
-
+  box-shadow: 1px 1px 1px 2px #2226;
 }
 
 #playlistlinks p {
   /* Ensure <p>s fill the container so that "text-align: centre" centres properly in the container */ 
   width: 100%;
-}
-
-#speciallink {
-  border-radius: 0.7rem; 
-  border: 2px solid #eee;
-}
-
-#speciallink:hover {
-  border: 2px solid green;
+  margin: 1rem;
 }
 
 #playlist ul {

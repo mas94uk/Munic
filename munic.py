@@ -280,18 +280,26 @@ class Handler(BaseHTTPRequestHandler):
         playlist_links = ""
         # If we are not showing the songs in the folder, the first link is always "All songs"
         if not include_songs:
-            playlist_links = """<li id="speciallink"><a href="*"><p>All Songs</p></a></li>\n"""
+            playlist_links = """<li id="speciallink"><a href="*"><img src="__ALBUMART__" loading="lazy"/><p>All Songs</p></a></li>\n""" \
+                .replace("__ALBUMART__", "__ROOT__munic.png")
 
         if dirs:
             # Sort the keys (dir names) alphabetically
             # Note that we are sorting by "simplified name", so "The Beatles" is in with the Bs, not the Ts.
             dir_names = [ dir_name for dir_name in dirs.keys() ]
             dir_names.sort()
+            print("dirs: %r" % dirs)
             for dir_name in dir_names:
                 display_name = dirs[dir_name]["display_name"]
                 link = dir_name + "/*"  # Include '*' to take us to the playlist
-                playlist_link = """<li><a href="__LINK__"><p>__NAME__</p></a></li>\n""" \
+                art_constructed_filepath = get_art_filepath(base_dict["dirs"][dir_name])
+                if art_constructed_filepath:
+                    art_constructed_filepath = dir_name + "/" + art_constructed_filepath
+                else:
+                    art_constructed_filepath = "__ROOT__munic.png"
+                playlist_link = """<li><a href="__LINK__"><img src="__ALBUMART__" loading="lazy"/><p>__NAME__</p></a></li>\n""" \
                     .replace("__LINK__", link) \
+                    .replace("__ALBUMART__", art_constructed_filepath) \
                     .replace("__NAME__", display_name)
                 playlist_links = playlist_links + playlist_link
 
@@ -310,7 +318,7 @@ class Handler(BaseHTTPRequestHandler):
 
             # Construct the list items
             for (song_display_name, song_display_album, song_constructed_filepath, art_constructed_filepath) in media_items:
-                playlist_item = """<li><a href="__SONG_FILENAME__"><div><img src="__ALBUMART__"/></div><div><p>__SONG_NAME__</p><p>__ALBUM_NAME__</p></div></a></li>\n""" \
+                playlist_item = """<li><a href="__SONG_FILENAME__"><div><img src="__ALBUMART__" loading="lazy"/></div><div><p>__SONG_NAME__</p><p>__ALBUM_NAME__</p></div></a></li>\n""" \
                     .replace("__ALBUMART__", art_constructed_filepath) \
                     .replace("__SONG_FILENAME__", song_constructed_filepath) \
                     .replace("__SONG_NAME__", song_display_name) \
