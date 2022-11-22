@@ -158,8 +158,8 @@ h3 {
 #playlistlinks a {
   display: flex;
   flex-direction: column;
-  width: 15rem;
-  height: 17rem;
+  width: 13rem;
+  height: 16rem;
   align-items: center;
   text-align: center;
   padding: 1rem;
@@ -213,6 +213,9 @@ h3 {
   border: 0.1rem;
   border-style: solid;
   border-color: #0000;
+
+  /* So that we don't add more space below an empty row */
+  margin-bottom: 0;
 } 
 
 #playlist img {

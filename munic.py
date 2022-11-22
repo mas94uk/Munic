@@ -157,7 +157,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_file(os.path.join(script_path, "audioPlayer.js"))
         elif name == "/muneq.js":
             self.send_file(os.path.join(script_path, "muneq.js"))
-        elif name == "/favicon.png":
+        elif name == "/favicon.png":    
             self.send_file(os.path.join(script_path, "favicon.png"))
         elif name == "/munic.png":
             self.send_file(os.path.join(script_path, "munic.png"))
@@ -172,7 +172,7 @@ class Handler(BaseHTTPRequestHandler):
         # Otherwise, assume the request is for a media file 
         else:
             self.send_media(name)
-
+    
         self.finish()
         logging.info("GET completed: {} on thread {}".format(self.path, threading.get_ident()))
 
@@ -288,7 +288,6 @@ class Handler(BaseHTTPRequestHandler):
             # Note that we are sorting by "simplified name", so "The Beatles" is in with the Bs, not the Ts.
             dir_names = [ dir_name for dir_name in dirs.keys() ]
             dir_names.sort()
-            print("dirs: %r" % dirs)
             for dir_name in dir_names:
                 display_name = dirs[dir_name]["display_name"]
                 link = dir_name + "/*"  # Include '*' to take us to the playlist
