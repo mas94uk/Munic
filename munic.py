@@ -189,6 +189,11 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header('Location', redirect)
         self.end_headers()
 
+        # If we don't call self.finish(), the redirect does not work when we are behind an nginx proxy. I don't understand why.
+        # If we do call it, we get a ValueError (which is caught, but looks a mess.)
+        # Therefore we do it only for redirects. Ideally we'd understand why it doesn't work behind nginx and fix it.
+        self.finish()
+
     def send_menu(self, name):
         # If the request is for a directory, we treat it as requesting a list of subdirs (artists, albums etc.) in that location.
         #   Queen/ --> gives a list of all Queen albums
@@ -240,6 +245,11 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(303)
             self.send_header("Location", redirect)
             self.end_headers()
+
+            # If we don't call self.finish(), the redirect does not work when we are behind an nginx proxy. I don't understand why.
+            # If we do call it, we get a ValueError (which is caught, but looks a mess.)
+            # Therefore we do it only for redirects. Ideally we'd understand why it doesn't work behind nginx and fix it.
+            self.finish()
             return
 
         # Read the playlist page template html from file
