@@ -153,8 +153,8 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write("Coming soon".encode("utf-8"))
         # If requesting a static file...
-        elif name == "/audioPlayer.js":
-            self.send_file(os.path.join(script_path, "audioPlayer.js"))
+        elif name == "/munic.js":
+            self.send_file(os.path.join(script_path, "munic.js"))
         elif name == "/muneq.js":
             self.send_file(os.path.join(script_path, "muneq.js"))
         elif name == "/favicon.png":    
@@ -263,7 +263,7 @@ class Handler(BaseHTTPRequestHandler):
         html = html.replace("__TITLE__", title)
 
         # Drop in the audioplayer and equaliser javascript files
-        html = html.replace("__AUDIOPLAY_JS__", root + "audioPlayer.js") 
+        html = html.replace("__AUDIOPLAY_JS__", root + "munic.js") 
         html = html.replace("__MUNEQ_JS__", root + "muneq.js") 
 
         # Get the titles: the display names of the path, or "Munic" if none.
@@ -305,7 +305,7 @@ class Handler(BaseHTTPRequestHandler):
                     art_constructed_filepath = dir_name + "/" + art_constructed_filepath
                 else:
                     art_constructed_filepath = "__ROOT__munic.png"
-                playlist_link = """<li><a href="__LINK__"><img src="__ALBUMART__" loading="lazy"/><p>__NAME__</p></a></li>\n""" \
+                playlist_link = """<li><a href="__LINK__" class="playlistlink"><img src="__ALBUMART__" loading="lazy"/><p>__NAME__</p></a></li>\n""" \
                     .replace("__LINK__", link) \
                     .replace("__ALBUMART__", art_constructed_filepath) \
                     .replace("__NAME__", display_name)
@@ -326,7 +326,7 @@ class Handler(BaseHTTPRequestHandler):
 
             # Construct the list items
             for (song_display_name, song_display_album, song_constructed_filepath, art_constructed_filepath) in media_items:
-                playlist_item = """<li><a href="__SONG_FILENAME__"><div><img src="__ALBUMART__" loading="lazy"/></div><div><p>__SONG_NAME__</p><p>__ALBUM_NAME__</p></div></a></li>\n""" \
+                playlist_item = """<li><a href="__SONG_FILENAME__" class="songlink"><div><img src="__ALBUMART__" loading="lazy"/></div><div><p>__SONG_NAME__</p><p>__ALBUM_NAME__</p></div></a></li>\n""" \
                     .replace("__ALBUMART__", art_constructed_filepath) \
                     .replace("__SONG_FILENAME__", song_constructed_filepath) \
                     .replace("__SONG_NAME__", song_display_name) \

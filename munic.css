@@ -317,3 +317,32 @@ h3 {
 #admin:hover {
   opacity: 1;
 }
+
+#searchbox {
+  position: fixed;
+  top: 5px;
+  left: calc(50% - 15rem);
+  transition: 0.5s ease-in;
+  font-size: 2rem;
+  height: 3rem;
+  width: 30rem;
+  border-radius: 1.1rem;  
+  background-color: #EFF;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  padding: 1rem;
+  text-align: center;
+  box-shadow: 2px 2px 2px 2px #2226;
+  opacity: 75%;
+}
+#searchbox.hidden {
+  background-color: #0000;
+  transition: 0.5s ease-in;
+  box-shadow: 2px 2px 2px 2px #0000;
+}
+
+.highlight {
+  transition-duration: 0.3s;
+  box-shadow: 2px 2px 2px 2px #2226;
+  background-color: #ffdf;
+}

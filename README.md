@@ -28,10 +28,8 @@ Munic is working and usable.  There are several more features I would like to im
 - Add command-line config options: port, user:pass, or config file
 - Add command-line help
 - Document nginx reverse proxy setup
-- Searching (server-side) and/or filtering of tracks
 - m3a playlist support (including generating custom playlists)
 - Change the header graphic to that of the currently-playing song
-- Jump to entry on key input: register keydown hander, keep record (escape to clear). Show popup or similar with first match. Enter to follow.
 
 ## Contributions
 I am happy to accept contributions if they meet the goals of what I am trying to do - send me a message if you're not sure.  If they don't meet my goals, you are welcome to fork the project, of course.
