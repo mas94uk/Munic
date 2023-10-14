@@ -22,7 +22,7 @@ Munic is tested on Ubuntu 22.04 and Debian Buster, but should work on any Linux 
 5. The rest should be pretty obvious
 
 ## Current status
-Munic is working and usable.  There are several more features I would like to implement -- see the todo list below.
+Munic is working and usable.  There are a few more nice-to-have things I would like to do -- see the todo list below.
 
 ## Todo list
 - Add command-line config options: port, user:pass, or config file

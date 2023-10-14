@@ -1,4 +1,4 @@
-/* Javascript audio player - based on github.com:NelsWebDev/BetterAudioPlaylist.git */
+/* Javascript audio player */
 
 class AudioPlaylist{
     onPlay(){
@@ -9,8 +9,8 @@ class AudioPlaylist{
         // Set the title and now-playing.
         // We do this here, rather than in setTrack(), so that it does not happen when the
         // page loads and nothing is yet playing.
-        var listPos = this.trackOrder[this.trackPos]; // handle shuffle indices
-        var link = $("#"+this.playlistId+ " li a").eq(listPos)[0];
+        var listPos = this.trackOrder[this.trackPos]; // to account for shuffle mode
+        var link = this.playlist.getElementsByTagName("a")[listPos];
         var nowPlaying = link.children[0].innerText.trim();
         if(link.childElementCount > 1 && link.children[1].innerText.length > 0) {
             nowPlaying = nowPlaying + " (" + link.children[1].innerText.trim() + ")";
@@ -19,23 +19,34 @@ class AudioPlaylist{
         this.nowPlaying.innerHTML = nowPlaying;
 
         // Highlight the currently-playing track
-        $("#"+this.playlistId+ " li a").eq(listPos).addClass(this.currentClass);
+        link.classList.add(this.currentClass);
 
         // Move the link to the middle of the screen
         link.scrollIntoView({ behavior: "smooth", block: "center", inline: "center"});
     }
 
-    randomizeOrder(){
-        for (var i = this.trackOrder.length - 1; i > 0; i--) {
+    randomizeOrder(length){
+        var trackOrder = this.defaultOrder(length);
+        for (var i = trackOrder.length - 1; i > 0; i--) {
             var j = Math.floor(Math.random() * (i + 1));
-            var temp = this.trackOrder[i];
-            this.trackOrder[i] = this.trackOrder[j];
-            this.trackOrder[j] = temp;
+            var temp = trackOrder[i];
+            trackOrder[i] = trackOrder[j];
+            trackOrder[j] = temp;
         }
+        return trackOrder;
+    }
+
+    defaultOrder(length) {
+        // Empty track array, fill array with indices in order
+        var trackOrder = [];
+        for(var i = 0; i < length; i++){
+            trackOrder.push(i);
+        }
+        return trackOrder;     
     }
 
     getSources(listPos) {
-        var original_url = $("#"+this.playlistId+ " li a").eq(listPos).attr("href");
+        var original_url = this.playlist.getElementsByTagName("li")[listPos].getElementsByTagName("a")[0].href;
 
         // Generate a list of sources: the original, and transcoded alternatives
         // TODO: Only offer alternate formats if the back end offers transcoding.
@@ -63,8 +74,13 @@ class AudioPlaylist{
     }
 
     setTrack(arrayPos){
+        console.log("setTrack " + arrayPos);
+
         // Remove the highlight
-        $("."+this.currentClass).removeClass(this.currentClass);
+        var currents = document.getElementsByClassName(this.currentClass);
+        for(var i=0 ; i<currents.length ; ++i) {
+            currents[i].classList.remove(this.currentClass);
+        }
 
         // If the spare player is already loaded with the requested track
         if(arrayPos == this.sparePlayerTrackPos) {
@@ -137,7 +153,7 @@ class AudioPlaylist{
             // We have reached the end.
             // Reshuffle for next time
             if(this.shuffle)
-                this.randomizeOrder();
+                this.trackOrder = this.randomizeOrder(this.length);
 
             // Start back at the start, but do not play
             this.setTrack(0);
@@ -155,9 +171,6 @@ class AudioPlaylist{
     setLoop(val){
         // Add/remove the loop highlight
         if(val)
-            $("#loop").addClass(this.selectedButtonClass);
-        else
-            $("#loop").removeClass(this.selectedButtonClass);
 
         if(val === true)
             this.loop = true;
@@ -166,54 +179,59 @@ class AudioPlaylist{
         return this.loop;
     }
 
-    setShuffle(val){
-        // Add/remove the shuffle highlight
-        if(val)
-            $("#shuffle").addClass(this.selectedButtonClass);
-        else
-            $("#shuffle").removeClass(this.selectedButtonClass);
-
-        if(val == this.shuffle) // if no change
-            return val;
-        else{
-            if(val === true){
-                this.randomizeOrder();
-                this.shuffle = true;
-            }
-            else{
-                this.shuffle = false;
-                // empty track array, fill array with indexs in order
-                this.trackOrder = [];
-                for(var i = 0; i < this.length; i++){
-                    this.trackOrder.push(i);
-                }
-
-                // jump array to track position of currently playing track
-                this.trackPos = this.trackOrder.indexOf($("."+this.currentClass).index());
-            }
-            return this.shuffle;
+    /** Called by clicking the shuffle button */
+    toggleShuffle() {
+        // Add/remove the shuffle highlight and update this.shuffle
+        var shuffleButton = document.getElementById("shuffle");
+        if(this.shuffle === true){
+            shuffleButton.classList.add(this.selectedButtonClass);
+            this.shuffle = false;
+        } else {
+            shuffleButton.classList.remove(this.selectedButtonClass);
+            this.shuffle = true;
         }
+
+        if(this.shuffle === true) {
+            this.trackOrder = this.randomizeOrder(this.length);
+
+            // Are we currently playing?
+            var playing = ! this.activePlayer.paused;
+
+            // Cue up the first (in shuffled order) track
+            this.setTrack(0);
+
+            // If we were previously playing, play immediately
+            if(playing)
+                this.activePlayer.play();
+        } else {
+            this.trackOrder = this.defaultOrder(this.length);
+
+            // Just let the rest of the playlist play out in default order
+            var currentSongLinks = this.playlist.getElementsByClassName(this.currentClass);
+            if(currentSongLinks.length > 0) {
+                var currentSongListItem = currentSongLinks[0].parentElement;
+                var currentSongIndex = parseInt(currentSongListItem.getAttribute("index"));               
+                this.trackPos = this.trackOrder.indexOf(currentSongIndex);
+            }
+            this.preloadNextTrack();
+        }
+
+        console.log("Shuffle order:" + this.trackOrder);
     }
 
-    toggleShuffle(){
-        if(this.shuffle === true)
-            this.setShuffle(false);
-        else
-            this.setShuffle(true);
-
-        this.setTrack(0);
-        return this.shuffle;
-    }
-
-    toggleLoop(){
+    toggleLoop() {
         if(this.loop === true)
-            this.setLoop(false);
+            this.loop = false;
         else
-            this.setLoop(true);
-        return this.loop;
+            this.loop = true;
+
+        if(this.loop)
+            this.loopButton.classList.add(this.selectedButtonClass);
+        else
+            this.loopButton.classList.remove(this.selectedButtonClass);
     }
 
-    mimeType(extension){
+    mimeType(extension) {
         if(extension=="mp3") return "mpeg";
         // All the others (m4a, ogg, wav, flac, wma) happen to be the same as the file extension
         return extension;
@@ -330,17 +348,16 @@ class AudioPlaylist{
         // Set defaults and initialzing player 
         var classObj = this; // store scope for event listeners
         this.shuffle = false;
-        this.playlistId = "playlist";
         this.currentClass = "current-song";
         this.selectedButtonClass = "selected";
         this.content = document.getElementsByClassName("content")[0]; /* the scrollable part including playlist and song links */
-        this.playlist = document.getElementById(this.playlistId);
+        this.playlist = document.getElementById("playlist").getElementsByTagName("ul")[0];
         this.length = this.playlist.getElementsByTagName("li").length;
         this.player1 = document.getElementById("audioPlayer1");
         this.player2 = document.getElementById("audioPlayer2");
         this.loop = false;
         this.trackPos = 0;
-        this.trackOrder = [];
+        this.trackOrder = this.defaultOrder(this.length);
         this.title = document.getElementById("title");
         this.orignalTitleText = title.innerHTML;
         this.albumart = document.getElementsByClassName("picture")[0];
@@ -351,9 +368,6 @@ class AudioPlaylist{
         this.shuffleButton = document.getElementById("shuffle");
         this.loopButton = document.getElementById("loop");
         this.searchbox = document.getElementById("searchbox");
-        for(var i = 0; i < this.length; i++){
-            this.trackOrder.push(i);
-        }
 
         // At startup, player1 is the "active" one, player2 the spare
         this.activePlayer = this.player1;
@@ -382,20 +396,31 @@ class AudioPlaylist{
         this.muneq = new Muneq(this.context, canvas);
 
         if(this.shuffle)
-            this.randomizeOrder();
+            this.trackOrder = this.randomizeOrder(this.length);
 
-        if(this.length > 0) {
+        // Cue up the first track (but don't play it)
+        if(this.length > 0)
             this.setTrack(this.trackPos);
+
+        var playlist_listitems = this.playlist.getElementsByTagName("li");
+        for(var i=0 ; i<playlist_listitems.length ; ++i) {
+            // Set an 'index' attribute for each track li
+            var li = playlist_listitems[i];
+            li.setAttribute("index", i);
+
+            // Handle the track link click
+            var link = playlist_listitems[i].getElementsByTagName("a")[0];
+            link.addEventListener("click", function(e) {
+                e.preventDefault();
+
+                // set track based on index of the list item in the ranomised order
+                var listitem = getParentByTag(e.target, "li");
+                var tracknum = parseInt(listitem.getAttribute("index"));
+                var order = classObj.trackOrder.indexOf(tracknum);
+                classObj.setTrack(order);
+                classObj.activePlayer.play();
+            });
         }
-
-        // Handle track link clicks
-        $("#"+this.playlistId+" li a ").click(function(e){
-            e.preventDefault();
-
-            // set track based on index of the list item in the ranomised order
-            classObj.setTrack(classObj.trackOrder.indexOf($(this).parent().index()));
-            classObj.activePlayer.play();
-        });
 
         // Handle end of track
         this.player1.addEventListener("ended", function(){
@@ -445,9 +470,8 @@ class AudioPlaylist{
 
         // If there is a stored volume, set volume to it; else to half.
         var volume = 0.5;
-        if(localStorage.getItem("volume")) {
+        if(localStorage.getItem("volume"))
             volume = localStorage.getItem("volume");
-        }
         this.activePlayer.volume = volume;
 
         // Resize parts when scrolling or resizing, plus once upon loading (now)
@@ -475,4 +499,9 @@ class AudioPlaylist{
         }
 
     }
+}
+
+function getParentByTag(elem, lookingFor) {
+    lookingFor = lookingFor.toUpperCase();
+    while (elem = elem.parentNode) if (elem.tagName === lookingFor) return elem;
 }
