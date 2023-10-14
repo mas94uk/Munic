@@ -48,26 +48,27 @@ class AudioPlaylist{
     getSources(listPos) {
         var original_url = this.playlist.getElementsByTagName("li")[listPos].getElementsByTagName("a")[0].href;
 
+        // Split the extension (.mp3 etc.) off
+        var dotPos = original_url.lastIndexOf('.');
+        var stem = original_url.substring(0, dotPos);
+        var original_format = original_url.substring(dotPos + 1);
+        
         // Generate a list of sources: the original, and transcoded alternatives
         // TODO: Only offer alternate formats if the back end offers transcoding.
         var source_template = '<source src="__FILE__" type="audio/__MIMETYPE__">';
-        var parts = original_url.split("."); // get the stem and extension
         var sources = "";
-        if(parts.length == 2) {
-            var stem = parts[0];
-            var original_format = parts[1];
-            // Put the original format first, except if it is FLAC or WAV (because the bandwidth use is too high)
-            if(original_format != "flac" && original_format != "wav") {
-                sources = sources + source_template.replace("__FILE__", original_url).replace("__MIMETYPE__", this.mimeType(original_format));
-            }
-            // Offer ogg transcode (if the original was not ogg)
-            if(original_format != "ogg") {
-                sources = sources + source_template.replace("__FILE__", stem + ".ogg").replace("__MIMETYPE__", "ogg");
-            }
-            // Offer mp3 transcode (if the original was not mp3)
-            if(original_format != "mp3") {
-                sources = sources + source_template.replace("__FILE__", stem + ".mp3").replace("__MIMETYPE__", "mpeg");
-            }
+
+        // Put the original format first, except if it is FLAC or WAV (because the bandwidth use is too high)
+        if(original_format != "flac" && original_format != "wav") {
+            sources = sources + source_template.replace("__FILE__", original_url).replace("__MIMETYPE__", this.mimeType(original_format));
+        }
+        // Offer ogg transcode (if the original was not ogg)
+        if(original_format != "ogg") {
+            sources = sources + source_template.replace("__FILE__", stem + ".ogg").replace("__MIMETYPE__", "ogg");
+        }
+        // Offer mp3 transcode (if the original was not mp3)
+        if(original_format != "mp3") {
+            sources = sources + source_template.replace("__FILE__", stem + ".mp3").replace("__MIMETYPE__", "mpeg");
         }
 
         return sources;
@@ -413,7 +414,7 @@ class AudioPlaylist{
             link.addEventListener("click", function(e) {
                 e.preventDefault();
 
-                // set track based on index of the list item in the ranomised order
+                // set track based on index of the list item in the randomised order
                 var listitem = getParentByTag(e.target, "li");
                 var tracknum = parseInt(listitem.getAttribute("index"));
                 var order = classObj.trackOrder.indexOf(tracknum);
@@ -482,7 +483,7 @@ class AudioPlaylist{
         // Register keypress listener to search/jump to items
         document.addEventListener("keydown", function(event) {
             return classObj.keypresses(event)
-        });        
+        });
     }
 
     init() {
