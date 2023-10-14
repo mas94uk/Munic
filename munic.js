@@ -10,19 +10,40 @@ class AudioPlaylist{
         // We do this here, rather than in setTrack(), so that it does not happen when the
         // page loads and nothing is yet playing.
         var listPos = this.trackOrder[this.trackPos]; // to account for shuffle mode
-        var link = this.playlist.getElementsByTagName("a")[listPos];
-        var nowPlaying = link.children[0].innerText.trim();
-        if(link.childElementCount > 1 && link.children[1].innerText.length > 0) {
-            nowPlaying = nowPlaying + " (" + link.children[1].innerText.trim() + ")";
-        }
-        this.title.innerHTML = nowPlaying;
-        this.nowPlaying.innerHTML = nowPlaying;
+        var listItem = this.playlist.children[listPos];
+        var link = listItem.getElementsByTagName("a")[0];
+        var songTitle = listItem.getElementsByTagName("p")[0].textContent.trim();
+
+        // Try to get the album name. If we have a second 'p' in the link, use it.
+        // Otherwise take the h2 value. This is a bit hacky but works in most cases.
+        var songAlbum = listItem.getElementsByTagName("p")[1].textContent.trim();
+        var playlistAlbum = this.header2.textContent.trim();
+        var album = songAlbum.length>0 ? songAlbum : playlistAlbum;
+
+        var nowPlaying = songTitle;
+        if (album.length > 0)
+            nowPlaying = nowPlaying + " (" + album + ")";
+        this.nowPlaying.textContent  = nowPlaying;
+        this.title.textContent = songTitle;
 
         // Highlight the currently-playing track
         link.classList.add(this.currentClass);
 
         // Move the link to the middle of the screen
         link.scrollIntoView({ behavior: "smooth", block: "center", inline: "center"});
+
+        // Set the mediasession metadata (for integration on phones etc.)
+        // This is a bit of a guess since we don't really know the artist and album, but we will assume they
+        // are the first and second level titles.
+        var image = this.playlist.getElementsByTagName("img")[listPos]; // Song image
+        var dims = image.naturalWidth + "x" + image.naturalHeight;
+        var artwork = [{ src: image.src, sizes: dims, type: image.mimeType}];
+        var meta = new MediaMetadata();
+        meta.title = songTitle;
+        meta.artist = this.header1.textContent;
+        meta.album = album;
+        meta.artwork = artwork;
+        navigator.mediaSession.metadata = meta;
     }
 
     randomizeOrder(length){
@@ -82,6 +103,9 @@ class AudioPlaylist{
         for(var i=0 ; i<currents.length ; ++i) {
             currents[i].classList.remove(this.currentClass);
         }
+
+        // Remove the metadata for the previously playing track
+        navigator.mediaSession.metadata = null;
 
         // If the spare player is already loaded with the requested track
         if(arrayPos == this.sparePlayerTrackPos) {
@@ -475,14 +499,22 @@ class AudioPlaylist{
             volume = localStorage.getItem("volume");
         this.activePlayer.volume = volume;
 
+        // Register MediaSession controls (for e.g. Android integration)
+        navigator.mediaSession.setActionHandler("nexttrack", function() {
+            classObj.nextTrack();
+        });
+        navigator.mediaSession.setActionHandler("previoustrack", function() {
+            classObj.prevTrack();
+        });
+
         // Resize parts when scrolling or resizing, plus once upon loading (now)
         this.content.onscroll = function() {classObj.manageSizes();};
-        window.onresize = function() {classObj.manageSizes();}
+        window.onresize = function() {classObj.manageSizes();};
         this.manageSizes();
 
         // Register keypress listener to search/jump to items
         document.addEventListener("keydown", function(event) {
-            return classObj.keypresses(event)
+            return classObj.keypresses(event);
         });
     }
 
@@ -505,4 +537,4 @@ class AudioPlaylist{
 function getParentByTag(elem, lookingFor) {
     lookingFor = lookingFor.toUpperCase();
     while (elem = elem.parentNode) if (elem.tagName === lookingFor) return elem;
-}
+  }
