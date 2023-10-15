@@ -309,9 +309,9 @@ class AudioPlaylist{
         this.searchbox.classList.remove("hidden");
 
         // Clear any existing highlight
-        var highlights = document.getElementsByClassName('highlight');
+        var highlights = document.getElementsByClassName('search-highlight');
         for(var i = 0 ; i < highlights.length ; ++i) {
-            highlights[i].classList.remove("highlight");
+            highlights[i].classList.remove("search-highlight");
         }
         
         // Remove and clear the search box in a few seconds (unless we cancel)
@@ -354,7 +354,7 @@ class AudioPlaylist{
                 var link = matches[index];
                 link.scrollIntoView({ behavior: "smooth", block: "center", inline: "center"});
                 link.focus();
-                link.classList.add("highlight");
+                link.classList.add("search-highlight");
                 this.search_hightlighted = link;
             }
         }

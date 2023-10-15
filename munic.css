@@ -176,7 +176,9 @@ h3 {
 }
 
 #playlistlinks img {
-  height: 15rem;
+  height: 12rem;
+  width: 12rem;
+  object-fit: cover;
   align-self: stretch;
   padding: 0.5rem;
   border-radius: 1.1rem;  
@@ -194,7 +196,10 @@ h3 {
 #playlistlinks p {
   /* Ensure <p>s fill the container so that "text-align: centre" centres properly in the container */ 
   width: 100%;
-  margin: 1rem;
+  height: 2rem;
+  margin-top: 1rem;
+  text-overflow: ellipsis;
+  overflow: hidden;
 }
 
 #playlist ul {
@@ -341,7 +346,7 @@ h3 {
   box-shadow: 2px 2px 2px 2px #0000;
 }
 
-.highlight {
+.search-highlight {
   transition-duration: 0.3s;
   box-shadow: 2px 2px 2px 2px #2226;
   background-color: #ffdf;
