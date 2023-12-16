@@ -313,6 +313,13 @@ class Handler(BaseHTTPRequestHandler):
 
         # Drop the links into the html document
         html = html.replace("__PLAYLIST_LINKS__", playlist_links)
+        # If there are no playlist links, hide the whole section
+        if playlist_links:
+            html = html.replace("__LINKS_CLASS__", "")
+            logging.info("*** SHOWING")
+        else:
+            html = html.replace("__LINKS_CLASS__", "hidden")
+            logging.info("*** HIDDEN")
 
         # Build the playlist contents.  
         playlist_items = ""

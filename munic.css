@@ -22,6 +22,10 @@ p {
   margin:0;
 }
 
+a {
+  text-decoration: none;
+}
+
 h1, h2, h3 {
   color: #222;
   font-style: italic;
@@ -117,7 +121,6 @@ h3 {
 }
 
 #controls a {
-  text-decoration: none;
   margin: 0.1rem;
   padding: 0.1rem;
   transition: 0.2s ease-out;
@@ -169,7 +172,6 @@ h3 {
   text-overflow: ellipsis;
   overflow: hidden;
   color: #222;
-  text-decoration: none;
   font-size: 1.3rem;
   transition: 0.2s ease-out;
   outline: none;
@@ -248,7 +250,6 @@ h3 {
   text-overflow: ellipsis;  /* Why doesn't this work?! */  
   overflow: hidden; /* Workaround for "text-overflow: ellipsis" not working */
   color: #222;
-  text-decoration: none;
   font-size: 1.3rem;
 
   /* For changes on hover */
@@ -287,19 +288,22 @@ h3 {
   margin-bottom: 10px;
 }
 
-.footer a {
-  color: #222;
-  padding: 5px;
-  text-decoration: none;
-  padding-left: 3rem;
+.footer #back {
+  font-size: 42px;
+  width: 52px;
+  margin: 0px;
+  padding: 0px;
+  float: left;
 }
 
 #audioPlayer1 {
-  width: 100%;
+  text-align: bottom;
+  float: right;
+  width: calc(100% - 52px - 2rem);
 }
 
 #audioPlayer2 {
-  width: 100%;
+  width: calc(100% - 52px - 2rem);
 }
 
 #audioPlayer1:focus { 
@@ -350,4 +354,8 @@ h3 {
   transition-duration: 0.3s;
   box-shadow: 2px 2px 2px 2px #2226;
   background-color: #ffdf;
+}
+
+.hidden {
+  display: none;
 }
