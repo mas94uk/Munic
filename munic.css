@@ -297,13 +297,11 @@ h3 {
 }
 
 #audioPlayer1 {
-  text-align: bottom;
-  float: right;
-  width: calc(100% - 52px - 2rem);
+  width: 100%;
 }
 
 #audioPlayer2 {
-  width: calc(100% - 52px - 2rem);
+  width: 100%;
 }
 
 #audioPlayer1:focus { 
