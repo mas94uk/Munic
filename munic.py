@@ -810,6 +810,7 @@ def load_library(media_dirs):
                         base_dict["graphic_name"] = graphic_filename
                         base_dict["graphic_filepath"] = graphic_filepath
                         num_graphics += 1
+                        largest_size = size
 
             # Add the extensions of any unknown files to the unknown extensions list.
             # This gives the user a clue that they have unknown media types.
